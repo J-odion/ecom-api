@@ -4,15 +4,20 @@ import { Model } from 'mongoose';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Order, OrderDocument, OrderStatus } from './schemas/order.schema';
 import { CreateOrderDto } from './dto/create-order.dto';
+import { InventoryService } from '../inventory/inventory.service';
 
 @Injectable()
 export class OrdersService {
   constructor(
     @InjectModel(Order.name) private orderModel: Model<OrderDocument>,
     private eventEmitter: EventEmitter2,
+    private inventoryService: InventoryService,
   ) {}
 
   async create(createOrderDto: CreateOrderDto): Promise<Order> {
+    // 1. Validate and reserve stock
+    await this.inventoryService.validateAndReserveStock(createOrderDto.items);
+
     const totalAmount = createOrderDto.items.reduce(
       (sum, item) => sum + item.qty * item.unitPrice,
       0,
@@ -24,7 +29,9 @@ export class OrdersService {
       status: OrderStatus.PENDING,
     });
 
-    return order.save();
+    const savedOrder = await order.save();
+    this.eventEmitter.emit('order.created', savedOrder);
+    return savedOrder;
   }
 
   async updateStatus(id: string, status: OrderStatus): Promise<Order> {
@@ -38,8 +45,10 @@ export class OrdersService {
       throw new NotFoundException(`Order with ID ${id} not found`);
     }
 
-    // Emit event when order is DELIVERED
-    if (status === OrderStatus.DELIVERED) {
+    // Emit events based on status
+    if (status === OrderStatus.PACKED) {
+      this.eventEmitter.emit('order.packed', order);
+    } else if (status === OrderStatus.DELIVERED) {
       this.eventEmitter.emit('order.delivered', order);
     }
 

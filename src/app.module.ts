@@ -9,6 +9,8 @@ import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/user.module';
 import { OrdersModule } from './modules/orders/orders.module';
 import { FinanceModule } from './modules/finance/finance.module';
+import { InventoryModule } from './modules/inventory/inventory.module';
+import { LogisticsModule } from './modules/logistics/logistics.module';
 
 @Module({
   imports: [
@@ -18,6 +20,8 @@ import { FinanceModule } from './modules/finance/finance.module';
     UsersModule,
     OrdersModule,
     FinanceModule,
+    InventoryModule,
+    LogisticsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
