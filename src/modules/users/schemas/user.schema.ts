@@ -14,6 +14,9 @@ export class User {
 
   @Prop({ enum: Role })
   role: Role;
+
+  @Prop({ default: 10 })
+  commissionRate: number;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);
