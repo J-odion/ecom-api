@@ -1,52 +1,73 @@
-# Ecommerce CRM – Modular Operating System
+# Ecommerce CRM – Revenue & Financial Operating System
 
-This project is not just a CRM, it is a comprehensive **Revenue & Financial Operating System** designed as a modular backend. It tracks state transitions across teams (Sales, Operations, Support, Marketing, and Management) and handles the "who gets paid, how much, and why."
+This project is a comprehensive **Revenue & Financial Operating System** designed as a modular backend. It tracks state transitions across operational teams (Sales, Operations, Support, Management) and specifically handles the critical "who gets paid, how much, and why."
 
 ## System Architecture
 
-The system is built as a set of modular services connected via an **API Gateway** and an **Event Bus**.
+The system is built as a set of modular, decoupled services connected via an **API Gateway** and an **Event Bus** (`@nestjs/event-emitter`).
 
-### Core Services
+### Fully Implemented Core Services
 
-1. **Auth Service:** Authentication, RBAC, session management.
-2. **Users/Customer Service:** User profiles, staff management, role assignments.
-3. **Lead/Sales Service:** Lead assignment, sales pipelines, CRM flows.
-4. **Order/Inventory Service:** Stock validation, fulfillment tracking, shipping queues.
-5. **Messaging Service:** Omnichannel conversation tracking (WhatsApp-style).
-6. **Automation Service:** Cross-cutting event engine (e.g., triggers task on delivery failure).
-7. **Analytics Service:** Aggregated metrics for Executive Dashboards.
-8. **Financial Service:** 
-   - Revenue Tracking (realized income on delivery)
-   - Expense Management (COGS, marketing, logistics)
-   - Commissions Engine (sales, ops, affiliates)
-   - Payroll System (base + commission + bonuses)
-   - Profit Calculation
-   - Wallets / Ledgers (Double-entry system)
+1. **Auth Service:** Authentication, JWT token generation, RBAC.
+2. **Users Service:** User profiles, staff management, role assignments (Admin, Sales Agent, Delivery Agent, etc.).
+3. **Inventory Service:** Physical stock tracking and synchronous pre-reservation of stock when orders are placed.
+4. **Order Service:** End-to-end state machine for orders (Pending -> Packed -> Shipped -> Delivered).
+5. **Logistics Service:** Generates tracking codes and manages the assignment of orders to specific Delivery Agents.
+6. **Financial Service (The Ledger):** 
+   - Double-entry ledger architecture via Immutable `Transaction` logs.
+   - Separate `Wallets` for the System and individual Staff/Agents.
+   - Configurable `commissionRate` per user.
+
+### Cross-Service Event Flows
+
+To keep the architecture scalable and decoupled, modules communicate via asynchronous events:
+- `order.created`: Handled by `InventoryService` to immediately block/reserve stock so it cannot be oversold.
+- `order.packed`: Handled by `InventoryService` to permanently deduct the actual physical warehouse stock and clear the reservation.
+- `order.delivered`: Handled by `FinanceService`. This triggers the double-entry bookkeeping:
+  1. Records gross realized revenue to the System Wallet.
+  2. Calculates the assigned Sales Agent's commission.
+  3. Creates a debit transaction against the System Wallet and a credit transaction to the Agent's Wallet.
+- `delivery.assigned` & `delivery.completed`: Handled by `LogisticsService` to trigger notifications (or external webhooks).
 
 ## Sprint Progress Log
 
-### Sprint 1 – Authentication & User Management
+### Sprint 1 – Authentication & Users
 **Status: ✅ Completed**
+- Built out NestJS scaffolding with Mongoose.
+- Implemented `UsersRepository` and JWT `AuthService`.
+- Exposes `POST /auth/login` and `POST /users` (Admin only).
 
-- [x] NestJS project bootstrap & Modular folder scaffolding
-- [x] MongoDB integration
-- [x] User schema and repository pattern
-- [x] Password hashing with bcrypt
-- [x] JWT authentication & Global validation pipes
-- [x] Role-based access control (RBAC) guards
-- [x] Swagger documentation for endpoints
-- [x] Implemented API Endpoints (`POST /auth/login`, `POST /users`)
+### Sprint 2 – The Financial Engine & Orders
+**Status: ✅ Completed**
+- Designed the **Double-Entry Ledger System** (`Wallet` and `Transaction` schemas).
+- Built the `OrdersService` and `OrdersController`.
+- Wired up `@nestjs/event-emitter`.
+- Emitting cross-service events (`EVENT: order.delivered` -> `Record Revenue & Commissions`).
 
-### Next Sprint – The Financial Engine & Orders
+### Sprint 3 – Inventory & Logistics
+**Status: ✅ Completed**
+- Built `Product` schema to handle physical vs. reserved stock.
+- Validates stock synchronously during order creation to prevent negative inventory.
+- Built `LogisticsService` to handle `ASSIGNED` and `COMPLETED` delivery flows.
+
+### Next Sprint – Messaging & Leads
 **Status: 🚧 Planning**
+- Build omnichannel conversation tracking (WhatsApp-style).
+- Build Lead assignment and sales pipelines.
 
-- Design the **Double-Entry Ledger System** for the Financial Service.
-- Commission rule engine (configurable logic for agents).
-- Order State Machine (Pending -> Packed -> Shipped -> Delivered).
-- Emitting cross-service events (e.g., `EVENT: Order Delivered` -> `Record Revenue`).
+## API Documentation (Swagger)
 
-## Crucial Design Patterns
+A complete Swagger UI is automatically generated for this backend.
+Run the application and navigate to:
+```
+http://localhost:3000/docs
+```
+It includes detailed schemas, request bodies, and token authorization for every endpoint across all 6 implemented modules.
 
-- **Event-Driven:** Every service emits events (e.g., `lead.created`, `order.delivered`).
-- **Role-Based Views:** A single entity (like an Order) yields different DTOs depending on whether Sales, Ops, or Management requests it.
-- **Ledger-Based Balances:** Balances are never updated statically; they are computed via transaction ledgers (+ revenue, - commission, - COGS = real profit).
+## Testing
+
+Run the test suite using:
+```bash
+npm run test
+```
+The application maintains test coverage for all core services, ensuring that the ledger calculates profit accurately and stock is never oversold.
