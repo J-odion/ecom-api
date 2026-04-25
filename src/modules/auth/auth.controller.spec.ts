@@ -15,6 +15,7 @@ describe('AuthController', () => {
           useValue: {
             validateUser: jest.fn().mockResolvedValue({ _id: '123', email: 'test@test.com' }),
             login: jest.fn().mockReturnValue({ access_token: 'token' }),
+            register: jest.fn().mockResolvedValue({ _id: '123', email: 'test@test.com' }),
           },
         },
       ],
@@ -32,5 +33,11 @@ describe('AuthController', () => {
     const res = await controller.login({ email: 'test@test.com', password: 'password123' });
     expect(res).toEqual({ access_token: 'token' });
     expect(authService.validateUser).toHaveBeenCalled();
+  });
+
+  it('should register a user', async () => {
+    const res = await controller.signup({ email: 'test@test.com', password: 'password123' });
+    expect(res).toEqual({ _id: '123', email: 'test@test.com' });
+    expect(authService.register).toHaveBeenCalled();
   });
 });
