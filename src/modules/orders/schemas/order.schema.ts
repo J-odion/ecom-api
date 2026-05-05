@@ -4,17 +4,23 @@ import { HydratedDocument, Types } from 'mongoose';
 export type OrderDocument = HydratedDocument<Order>;
 
 export enum OrderStatus {
-  PENDING = 'PENDING',
-  PACKED = 'PACKED',
-  SHIPPED = 'SHIPPED',
+  SCHEDULED = 'SCHEDULED',
   DELIVERED = 'DELIVERED',
-  CANCELLED = 'CANCELLED',
+  FAILED = 'FAILED',
+  CASH_REMITTED = 'CASH_REMITTED',
+  DISCREPANCY = 'DISCREPANCY',
+  CANCELLED = 'CANCELLED'
+}
+
+export enum DeliveryType {
+  IN_HOUSE = 'IN_HOUSE',
+  THIRD_PARTY = 'THIRD_PARTY'
 }
 
 @Schema({ _id: false })
 export class OrderItem {
-  @Prop({ required: true })
-  productId: string;
+  @Prop({ type: Types.ObjectId, ref: 'Product', required: true })
+  productId: Types.ObjectId;
 
   @Prop({ required: true })
   qty: number;
@@ -27,11 +33,20 @@ export const OrderItemSchema = SchemaFactory.createForClass(OrderItem);
 
 @Schema({ timestamps: true })
 export class Order {
-  @Prop({ type: Types.ObjectId, ref: 'User', required: true })
-  customerId: Types.ObjectId;
+  @Prop({ required: true })
+  customerName: string;
+
+  @Prop({ required: true })
+  customerPhone: string;
+
+  @Prop()
+  customerAddress: string;
 
   @Prop({ type: Types.ObjectId, ref: 'User' })
-  agentId: Types.ObjectId; // the sales agent who closed it
+  agentId: Types.ObjectId; // CS Agent who scheduled it
+
+  @Prop({ type: Types.ObjectId, ref: 'User' })
+  logisticsId: Types.ObjectId; // Rider or Third Party assigned
 
   @Prop({ type: [OrderItemSchema], required: true })
   items: OrderItem[];
@@ -39,11 +54,17 @@ export class Order {
   @Prop({ required: true })
   totalAmount: number;
 
-  @Prop({ enum: OrderStatus, default: OrderStatus.PENDING })
+  @Prop({ enum: OrderStatus, default: OrderStatus.SCHEDULED })
   status: OrderStatus;
 
-  @Prop({ required: true })
-  paymentMethod: string;
+  @Prop({ enum: DeliveryType, default: DeliveryType.IN_HOUSE })
+  deliveryType: DeliveryType;
+
+  @Prop({ default: 0 })
+  deliveryFee: number;
+  
+  @Prop({ type: Types.ObjectId, ref: 'Lead' })
+  leadId: Types.ObjectId; // The lead this order originated from
 }
 
 export const OrderSchema = SchemaFactory.createForClass(Order);

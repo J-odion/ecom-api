@@ -3,8 +3,8 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { OnEvent } from '@nestjs/event-emitter';
 
-import { Product, ProductDocument } from './schemas/product.schema';
-import { CreateProductDto } from './dto/create-product.dto';
+import { Product, ProductDocument } from '../products/schemas/product.schema';
+import { CreateProductDto } from '../products/dto/create-product.dto';
 import type { OrderDocument } from '../orders/schemas/order.schema';
 
 @Injectable()
@@ -41,9 +41,20 @@ export class InventoryService {
     return true;
   }
 
-  @OnEvent('order.packed')
-  async handleOrderPackedEvent(order: OrderDocument) {
-    // When order is packed, permanently deduct the stock
+  @OnEvent('order.scheduled')
+  async handleOrderScheduledEvent(order: OrderDocument) {
+    // When order is scheduled, reserve the stock
+    for (const item of order.items) {
+      await this.productModel.findByIdAndUpdate(
+        item.productId,
+        { $inc: { reservedStock: item.qty } }
+      );
+    }
+  }
+
+  @OnEvent('order.delivered')
+  async handleOrderDeliveredEvent(order: OrderDocument) {
+    // When order is delivered, permanently deduct stock and release reserved stock
     for (const item of order.items) {
       await this.productModel.findByIdAndUpdate(
         item.productId,
@@ -53,6 +64,17 @@ export class InventoryService {
             reservedStock: -item.qty 
           } 
         }
+      );
+    }
+  }
+
+  @OnEvent('order.cancelled')
+  async handleOrderCancelledEvent(order: OrderDocument) {
+    // When order is cancelled before delivery or failed, release reserved stock
+    for (const item of order.items) {
+      await this.productModel.findByIdAndUpdate(
+        item.productId,
+        { $inc: { reservedStock: -item.qty } }
       );
     }
   }

@@ -8,11 +8,20 @@ export class Product {
   @Prop({ required: true })
   name: string;
 
-  @Prop({ unique: true, required: true })
-  sku: string;
+  @Prop()
+  description: string;
 
   @Prop({ required: true })
-  price: number;
+  baseCost: number;
+
+  @Prop({ required: true })
+  sellingPrice: number;
+
+  @Prop({ default: true })
+  isActive: boolean;
+
+  @Prop({ required: true, unique: true })
+  sku: string;
 
   @Prop({ required: true, default: 0 })
   stock: number; // Physical stock in warehouse

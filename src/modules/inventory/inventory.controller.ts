@@ -1,7 +1,7 @@
 import { Controller, Post, Body, Get } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { InventoryService } from './inventory.service';
-import { CreateProductDto } from './dto/create-product.dto';
+import { CreateProductDto } from '../products/dto/create-product.dto';
 
 @ApiTags('Inventory')
 @ApiBearerAuth()

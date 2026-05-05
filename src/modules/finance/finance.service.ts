@@ -12,6 +12,7 @@ import {
 } from './schemas/transaction.schema';
 import type { OrderDocument } from '../orders/schemas/order.schema';
 import { UsersService } from '../users/users.service';
+import { CommissionRulesService } from '../commission-rules/commission-rules.service';
 
 @Injectable()
 export class FinanceService {
@@ -21,6 +22,7 @@ export class FinanceService {
     @InjectModel(Wallet.name) private walletModel: Model<WalletDocument>,
     @InjectModel(Transaction.name) private transactionModel: Model<TransactionDocument>,
     private readonly usersService: UsersService,
+    private readonly commissionRulesService: CommissionRulesService,
   ) {}
 
   async getWalletBalance(userId: string): Promise<number> {
@@ -51,8 +53,8 @@ export class FinanceService {
     return wallet;
   }
 
-  @OnEvent('order.delivered')
-  async handleOrderDeliveredEvent(order: OrderDocument) {
+  @OnEvent('order.cash_remitted')
+  async handleOrderCashRemittedEvent(order: OrderDocument) {
     this.logger.log(`Handling financial transaction for order ${order._id}`);
 
     const systemWallet = await this.getSystemWallet();
@@ -75,37 +77,47 @@ export class FinanceService {
       try {
         const agent = await this.usersService.findOne(order.agentId.toString());
         if (agent) {
-          const commissionRate = agent.commissionRate || 10;
-          const commissionAmount = (order.totalAmount * commissionRate) / 100;
+          
+          let totalCommissionAmount = 0;
+          for (const item of order.items) {
+            const itemCommission = await this.commissionRulesService.calculateCommission(
+              item.productId.toString(),
+              item.qty,
+              item.unitPrice * item.qty
+            );
+            totalCommissionAmount += itemCommission;
+          }
 
-          const agentWallet = await this.getOrCreateWallet(order.agentId, WalletType.STAFF);
+          if (totalCommissionAmount > 0) {
+            const agentWallet = await this.getOrCreateWallet(order.agentId, WalletType.STAFF);
 
-          // Debit System Wallet for Commission
-          const sysCommissionTx = new this.transactionModel({
-            orderId: order._id,
-            walletId: systemWallet._id,
-            amount: commissionAmount,
-            type: TransactionType.DEBIT,
-            category: TransactionCategory.COMMISSION,
-            description: `Commission payout for Order ${order._id} to Agent ${agent._id}`,
-          });
-          await sysCommissionTx.save();
+            // Debit System Wallet for Commission
+            const sysCommissionTx = new this.transactionModel({
+              orderId: order._id,
+              walletId: systemWallet._id,
+              amount: totalCommissionAmount,
+              type: TransactionType.DEBIT,
+              category: TransactionCategory.COMMISSION,
+              description: `Commission payout for Order ${order._id} to Agent ${agent._id}`,
+            });
+            await sysCommissionTx.save();
 
-          systemWallet.balance -= commissionAmount;
+            systemWallet.balance -= totalCommissionAmount;
 
-          // Credit Agent Wallet
-          const agentCommissionTx = new this.transactionModel({
-            orderId: order._id,
-            walletId: agentWallet._id,
-            amount: commissionAmount,
-            type: TransactionType.CREDIT,
-            category: TransactionCategory.COMMISSION,
-            description: `Commission earned from Order ${order._id}`,
-          });
-          await agentCommissionTx.save();
+            // Credit Agent Wallet
+            const agentCommissionTx = new this.transactionModel({
+              orderId: order._id,
+              walletId: agentWallet._id,
+              amount: totalCommissionAmount,
+              type: TransactionType.CREDIT,
+              category: TransactionCategory.COMMISSION,
+              description: `Commission earned from Order ${order._id}`,
+            });
+            await agentCommissionTx.save();
 
-          agentWallet.balance += commissionAmount;
-          await agentWallet.save();
+            agentWallet.balance += totalCommissionAmount;
+            await agentWallet.save();
+          }
         }
       } catch (err) {
         this.logger.error(`Failed to process commission for agent ${order.agentId}`, err);

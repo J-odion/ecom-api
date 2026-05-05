@@ -22,4 +22,8 @@ export class UsersRepository {
   findById(id: string) {
     return this.userModel.findById(id);
   }
+
+  findByRole(role: string) {
+    return this.userModel.find({ role }).exec();
+  }
 }

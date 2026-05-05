@@ -23,4 +23,8 @@ export class UsersService {
   async findOne(id: string) {
     return this.usersRepository.findById(id);
   }
+
+  async findByRole(role: string) {
+    return this.usersRepository.findByRole(role);
+  }
 }

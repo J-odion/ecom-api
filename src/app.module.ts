@@ -14,6 +14,8 @@ import { OrdersModule } from './modules/orders/orders.module';
 import { FinanceModule } from './modules/finance/finance.module';
 import { InventoryModule } from './modules/inventory/inventory.module';
 import { LogisticsModule } from './modules/logistics/logistics.module';
+import { ProductsModule } from './modules/products/products.module';
+import { CommissionRulesModule } from './modules/commission-rules/commission-rules.module';
 
 @Module({
   imports: [
@@ -25,6 +27,8 @@ import { LogisticsModule } from './modules/logistics/logistics.module';
     FinanceModule,
     InventoryModule,
     LogisticsModule,
+    ProductsModule,
+    CommissionRulesModule,
   ],
   controllers: [AppController],
   providers: [AppService],
