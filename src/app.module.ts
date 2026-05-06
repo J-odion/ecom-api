@@ -16,6 +16,8 @@ import { InventoryModule } from './modules/inventory/inventory.module';
 import { LogisticsModule } from './modules/logistics/logistics.module';
 import { ProductsModule } from './modules/products/products.module';
 import { CommissionRulesModule } from './modules/commission-rules/commission-rules.module';
+import { LeadsModule } from './modules/leads/leads.module';
+import { MediaBuyersModule } from './modules/media-buyers/media-buyers.module';
 
 @Module({
   imports: [
@@ -29,6 +31,8 @@ import { CommissionRulesModule } from './modules/commission-rules/commission-rul
     LogisticsModule,
     ProductsModule,
     CommissionRulesModule,
+    LeadsModule,
+    MediaBuyersModule,
   ],
   controllers: [AppController],
   providers: [AppService],
