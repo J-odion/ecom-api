@@ -70,7 +70,7 @@ To keep the architecture scalable and decoupled, modules communicate via asynchr
 A complete Swagger UI is automatically generated for this backend.
 Run the application and navigate to:
 ```
-http://localhost:8980/docs
+http://localhost:8080/docs
 ```
 It includes detailed schemas, request bodies, and token authorization for every endpoint across all implemented modules.
 
