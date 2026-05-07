@@ -19,23 +19,25 @@ export class InventoryService {
   }
 
   async validateAndReserveStock(items: { productId: string; qty: number }[]): Promise<boolean> {
-    // 1. Validate
     for (const item of items) {
-      const product = await this.productModel.findById(item.productId);
-      if (!product) throw new NotFoundException(`Product ${item.productId} not found`);
+      const result = await this.productModel.updateOne(
+        {
+          _id: item.productId,
+          $expr: {
+            $gte: [{ $subtract: ['$stock', '$reservedStock'] }, item.qty],
+          },
+        },
+        { $inc: { reservedStock: item.qty } },
+      );
 
-      const availableStock = product.stock - product.reservedStock;
-      if (availableStock < item.qty) {
+      if (result.modifiedCount === 0) {
+        // Either product doesn't exist or insufficient stock
+        const product = await this.productModel.findById(item.productId);
+        if (!product) {
+          throw new NotFoundException(`Product ${item.productId} not found`);
+        }
         throw new BadRequestException(`Insufficient stock for product ${product.name}`);
       }
-    }
-
-    // 2. Reserve
-    for (const item of items) {
-      await this.productModel.findByIdAndUpdate(
-        item.productId,
-        { $inc: { reservedStock: item.qty } }
-      );
     }
 
     return true;

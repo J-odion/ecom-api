@@ -1,10 +1,13 @@
-import { Controller, Post, Body, Get, Query } from '@nestjs/common';
+import { Controller, Post, Body, Get, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { MediaBuyersService } from './media-buyers.service';
 import { CreateSpendLogDto } from './dto/create-spend-log.dto';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
 
 @ApiTags('Media Buyers')
 @ApiBearerAuth()
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('media-buyers')
 export class MediaBuyersController {
   constructor(private readonly mediaBuyersService: MediaBuyersService) {}

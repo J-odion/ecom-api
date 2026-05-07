@@ -57,6 +57,16 @@ export class FinanceService {
   async handleOrderCashRemittedEvent(order: OrderDocument) {
     this.logger.log(`Handling financial transaction for order ${order._id}`);
 
+    // Check if revenue has already been recorded for this order (Idempotency)
+    const existingRevenue = await this.transactionModel.findOne({
+      orderId: order._id,
+      category: TransactionCategory.REVENUE,
+    });
+    if (existingRevenue) {
+      this.logger.warn(`Financial transactions for order ${order._id} already recorded. Skipping.`);
+      return;
+    }
+
     const systemWallet = await this.getSystemWallet();
 
     // 1. Record Gross Revenue to System Wallet
@@ -70,20 +80,23 @@ export class FinanceService {
     });
     await revenueTx.save();
 
-    systemWallet.balance += order.totalAmount;
+    // Atomic increment
+    await this.walletModel.updateOne(
+      { _id: systemWallet._id },
+      { $inc: { balance: order.totalAmount } },
+    );
 
     // 2. Calculate and process Agent Commission
     if (order.agentId) {
       try {
         const agent = await this.usersService.findOne(order.agentId.toString());
         if (agent) {
-          
           let totalCommissionAmount = 0;
           for (const item of order.items) {
             const itemCommission = await this.commissionRulesService.calculateCommission(
               item.productId.toString(),
               item.qty,
-              item.unitPrice * item.qty
+              item.unitPrice * item.qty,
             );
             totalCommissionAmount += itemCommission;
           }
@@ -102,8 +115,6 @@ export class FinanceService {
             });
             await sysCommissionTx.save();
 
-            systemWallet.balance -= totalCommissionAmount;
-
             // Credit Agent Wallet
             const agentCommissionTx = new this.transactionModel({
               orderId: order._id,
@@ -115,15 +126,20 @@ export class FinanceService {
             });
             await agentCommissionTx.save();
 
-            agentWallet.balance += totalCommissionAmount;
-            await agentWallet.save();
+            // Atomic updates
+            await this.walletModel.updateOne(
+              { _id: systemWallet._id },
+              { $inc: { balance: -totalCommissionAmount } },
+            );
+            await this.walletModel.updateOne(
+              { _id: agentWallet._id },
+              { $inc: { balance: totalCommissionAmount } },
+            );
           }
         }
       } catch (err) {
         this.logger.error(`Failed to process commission for agent ${order.agentId}`, err);
       }
     }
-
-    await systemWallet.save();
   }
 }
