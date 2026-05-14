@@ -12,7 +12,7 @@ async function bootstrap() {
   const allowedOrigins = [
     'http://localhost:5173',
     'http://localhost:5174',
-    'https://ecommcrm.vercel.app',
+    'https://ecom-crm-frontend.vercel.app/',
   ];
 
   app.enableCors({
@@ -24,7 +24,7 @@ async function bootstrap() {
       } else {
         // Special case: Always allow Lead Capture origins for the embeddable forms
         // In a more strict setup, you would validate the 'origin' against a database of allowed domains
-        callback(null, true); 
+        callback(null, true);
       }
     },
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
