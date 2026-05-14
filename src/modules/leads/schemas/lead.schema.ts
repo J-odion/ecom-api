@@ -8,7 +8,7 @@ export enum LeadStatus {
   CONTACTED = 'CONTACTED',
   SCHEDULED = 'SCHEDULED', // Becomes an Order
   CANCELLED = 'CANCELLED',
-  PARTIAL = 'PARTIAL',     // For progressive capture
+  PARTIAL = 'PARTIAL',     // Abandoned/Progressive state
 }
 
 export enum LeadSource {
@@ -31,7 +31,7 @@ export class Lead {
   @Prop({ required: true })
   customerName: string;
 
-  @Prop({ required: true, index: true }) // Indexed for fast identity lookup
+  @Prop({ required: true, index: true }) // Fast identity lookup
   customerPhone: string;
 
   @Prop()
@@ -43,10 +43,10 @@ export class Lead {
   @Prop({ required: true, min: 1 })
   quantity: number;
 
-  @Prop({ enum: LeadStatus, default: LeadStatus.NEW })
+  @Prop({ enum: LeadStatus, default: LeadStatus.NEW, index: true }) // Fast status filtering for CS
   status: LeadStatus;
 
-  @Prop({ type: Types.ObjectId, ref: 'User', default: null })
+  @Prop({ type: Types.ObjectId, ref: 'User', default: null, index: true })
   assignedTo: Types.ObjectId;
 
   @Prop({ type: Types.ObjectId, ref: 'User', default: null })
@@ -58,13 +58,11 @@ export class Lead {
   @Prop({ enum: LeadEntryType, default: LeadEntryType.FORM })
   entryType: LeadEntryType;
 
-  // --- Identity & Journey Logic ---
-  
   @Prop({ default: false })
-  isDuplicate: boolean; // Multiple hits for same product without order
+  isDuplicate: boolean;
 
   @Prop({ default: false })
-  isReturning: boolean; // Has placed an order before
+  isReturning: boolean;
 
   @Prop({ default: 1 })
   submissionCount: number;

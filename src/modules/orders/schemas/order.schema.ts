@@ -36,17 +36,17 @@ export class Order {
   @Prop({ required: true })
   customerName: string;
 
-  @Prop({ required: true })
+  @Prop({ required: true, index: true }) // Fast lookup for Returning Customer identity
   customerPhone: string;
 
   @Prop()
   customerAddress: string;
 
-  @Prop({ type: Types.ObjectId, ref: 'User' })
-  agentId: Types.ObjectId; // CS Agent who scheduled it
+  @Prop({ type: Types.ObjectId, ref: 'User', index: true })
+  agentId: Types.ObjectId;
 
   @Prop({ type: Types.ObjectId, ref: 'User' })
-  logisticsId: Types.ObjectId; // Rider or Third Party assigned
+  logisticsId: Types.ObjectId;
 
   @Prop({ type: [OrderItemSchema], required: true })
   items: OrderItem[];
@@ -54,7 +54,7 @@ export class Order {
   @Prop({ required: true })
   totalAmount: number;
 
-  @Prop({ enum: OrderStatus, default: OrderStatus.SCHEDULED })
+  @Prop({ enum: OrderStatus, default: OrderStatus.SCHEDULED, index: true })
   status: OrderStatus;
 
   @Prop({ enum: DeliveryType, default: DeliveryType.IN_HOUSE })
@@ -63,11 +63,11 @@ export class Order {
   @Prop({ default: 0 })
   deliveryFee: number;
   
-  @Prop({ type: Types.ObjectId, ref: 'Lead' })
-  leadId: Types.ObjectId; // The lead this order originated from
+  @Prop({ type: Types.ObjectId, ref: 'Lead', index: true })
+  leadId: Types.ObjectId;
 
   @Prop({ type: Types.ObjectId, ref: 'Location' })
-  fulfillmentLocationId: Types.ObjectId; // The office/warehouse fulfilling this order
+  fulfillmentLocationId: Types.ObjectId;
 
   @Prop()
   notes: string;
