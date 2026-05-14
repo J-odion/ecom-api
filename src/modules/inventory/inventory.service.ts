@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { OnEvent } from '@nestjs/event-emitter';
@@ -13,12 +13,15 @@ import { TransferStockDto } from './dto/transfer-stock.dto';
 
 @Injectable()
 export class InventoryService {
+  private readonly logger = new Logger(InventoryService.name);
+
   constructor(
     @InjectModel(Product.name) private productModel: Model<ProductDocument>,
     @InjectModel(StockLevel.name) private stockLevelModel: Model<StockLevelDocument>,
   ) {}
 
   async createProduct(dto: CreateProductDto): Promise<Product> {
+    this.logger.log(`Adding new product to catalog: ${dto.name}`);
     const product = new this.productModel(dto);
     return product.save();
   }
@@ -28,15 +31,16 @@ export class InventoryService {
    */
   async validateAndReserveStock(items: { productId: string; qty: number }[], locationId?: string): Promise<boolean> {
     if (!locationId) {
-        throw new BadRequestException('Fulfillment location is required for stock reservation');
+        this.logger.warn('Stock reservation failed: No fulfillment location provided.');
+        throw new BadRequestException('Please select an office or warehouse for this order.');
     }
 
+    this.logger.log(`Attempting to reserve stock for ${items.length} items at location ${locationId}`);
     const locId = new Types.ObjectId(locationId);
 
     for (const item of items) {
       const prodId = new Types.ObjectId(item.productId);
       
-      // Attempt atomic update on StockLevel
       const result = await this.stockLevelModel.updateOne(
         {
           productId: prodId,
@@ -49,24 +53,32 @@ export class InventoryService {
       );
 
       if (result.modifiedCount === 0) {
-        // Either stock level doesn't exist or insufficient stock
         const stockLevel = await this.stockLevelModel.findOne({ productId: prodId, locationId: locId });
         const product = await this.productModel.findById(prodId);
+        const productName = product?.name || item.productId;
         
         if (!stockLevel) {
-          throw new BadRequestException(`No stock record found for product ${product?.name || item.productId} at this location`);
+          this.logger.warn(`Stock reservation failed: No stock record for ${productName} at ${locationId}`);
+          throw new BadRequestException(`We don't have a record of "${productName}" in the selected office. Please check the inventory.`);
         }
-        throw new BadRequestException(`Insufficient stock for product ${product?.name || item.productId} at this location`);
+
+        this.logger.warn(`Stock reservation failed: Insufficient stock for ${productName} at ${locationId}`);
+        throw new BadRequestException(`Insufficient stock for "${productName}". We only have ${stockLevel.stock - stockLevel.reservedStock} available at this location.`);
       }
     }
 
+    this.logger.log(`Stock reserved successfully for order at location ${locationId}`);
     return true;
   }
 
   @OnEvent('order.delivered')
   async handleOrderDeliveredEvent(order: OrderDocument) {
-    if (!order.fulfillmentLocationId) return;
+    if (!order.fulfillmentLocationId) {
+      this.logger.error(`Stock deduction error: Order ${order._id} delivered but no fulfillmentLocationId found.`);
+      return;
+    }
 
+    this.logger.log(`Order ${order._id} delivered. Deducting stock from location ${order.fulfillmentLocationId}`);
     for (const item of order.items) {
       await this.stockLevelModel.updateOne(
         { 
@@ -85,8 +97,12 @@ export class InventoryService {
 
   @OnEvent('order.cancelled')
   async handleOrderCancelledEvent(order: OrderDocument) {
-    if (!order.fulfillmentLocationId) return;
+    if (!order.fulfillmentLocationId) {
+        this.logger.error(`Stock restoration error: Order ${order._id} cancelled but no fulfillmentLocationId found.`);
+        return;
+    }
 
+    this.logger.log(`Order ${order._id} cancelled. Releasing reserved stock at location ${order.fulfillmentLocationId}`);
     for (const item of order.items) {
       await this.stockLevelModel.updateOne(
         { 
@@ -99,44 +115,41 @@ export class InventoryService {
   }
 
   async stockIn(dto: StockInDto): Promise<StockLevel> {
+    this.logger.log(`Stock-in: Adding ${dto.quantity} units for product ${dto.productId} at location ${dto.locationId}`);
     const prodId = new Types.ObjectId(dto.productId);
     const locId = new Types.ObjectId(dto.locationId);
 
-    const stockLevel = await this.stockLevelModel.findOneAndUpdate(
+    return this.stockLevelModel.findOneAndUpdate(
       { productId: prodId, locationId: locId },
       { $inc: { stock: dto.quantity } },
       { upsert: true, new: true }
     );
-
-    return stockLevel;
   }
 
   async updateStock(productId: string, dto: UpdateStockDto): Promise<StockLevel> {
+    this.logger.log(`Manual stock adjustment for product ${productId} at location ${dto.locationId} to ${dto.quantity}`);
     const prodId = new Types.ObjectId(productId);
     const locId = new Types.ObjectId(dto.locationId);
 
-    const stockLevel = await this.stockLevelModel.findOneAndUpdate(
+    return this.stockLevelModel.findOneAndUpdate(
       { productId: prodId, locationId: locId },
       { stock: dto.quantity },
       { upsert: true, new: true }
     );
-
-    return stockLevel;
   }
 
   async transferStock(dto: TransferStockDto): Promise<boolean> {
+    this.logger.log(`Initiating stock transfer: ${dto.quantity} units from ${dto.fromLocationId} to ${dto.toLocationId}`);
     const prodId = new Types.ObjectId(dto.productId);
     const fromLocId = new Types.ObjectId(dto.fromLocationId);
     const toLocId = new Types.ObjectId(dto.toLocationId);
 
-    // 1. Check if source has enough stock
     const sourceStock = await this.stockLevelModel.findOne({ productId: prodId, locationId: fromLocId });
     if (!sourceStock || (sourceStock.stock - sourceStock.reservedStock) < dto.quantity) {
-      throw new BadRequestException('Insufficient available stock at source location');
+      this.logger.warn(`Transfer failed: Insufficient stock at source ${dto.fromLocationId}`);
+      throw new BadRequestException('Cannot complete transfer: The source office does not have enough available stock.');
     }
 
-    // 2. Perform transfer (Atomic decrement/increment)
-    // Note: In a production environment, use Mongoose transactions here.
     await this.stockLevelModel.updateOne(
       { productId: prodId, locationId: fromLocId },
       { $inc: { stock: -dto.quantity } }
@@ -148,6 +161,7 @@ export class InventoryService {
       { upsert: true }
     );
 
+    this.logger.log(`Transfer completed successfully.`);
     return true;
   }
 

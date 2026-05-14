@@ -1,31 +1,46 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
-import { EventEmitter2 } from '@nestjs/event-emitter';
-
+import { Model, Types } from 'mongoose';
 import { Delivery, DeliveryDocument, DeliveryStatus } from './schemas/delivery.schema';
 import { AssignDeliveryDto } from './dto/assign-delivery.dto';
+import { Order, OrderDocument } from '../orders/schemas/order.schema';
 
 @Injectable()
 export class LogisticsService {
+  private readonly logger = new Logger(LogisticsService.name);
+
   constructor(
     @InjectModel(Delivery.name) private deliveryModel: Model<DeliveryDocument>,
-    private eventEmitter: EventEmitter2,
+    @InjectModel(Order.name) private orderModel: Model<OrderDocument>,
   ) {}
 
   async assignDelivery(dto: AssignDeliveryDto): Promise<Delivery> {
-    const delivery = new this.deliveryModel({
-      ...dto,
-      status: DeliveryStatus.ASSIGNED,
-      trackingCode: `TRK-${Math.floor(Math.random() * 1000000)}`,
-    });
+    this.logger.log(`Assigning Order ${dto.orderId} to Agent ${dto.deliveryAgentId}`);
+    
+    try {
+      const delivery = new this.deliveryModel({
+        orderId: new Types.ObjectId(dto.orderId),
+        deliveryAgentId: new Types.ObjectId(dto.deliveryAgentId),
+        status: DeliveryStatus.ASSIGNED,
+      });
 
-    const savedDelivery = await delivery.save();
-    this.eventEmitter.emit('delivery.assigned', savedDelivery);
-    return savedDelivery;
+      const savedDelivery = await delivery.save();
+      
+      // Update order with logistics ID
+      await this.orderModel.findByIdAndUpdate(dto.orderId, {
+        logisticsId: new Types.ObjectId(dto.deliveryAgentId),
+      });
+
+      this.logger.log(`Delivery ${savedDelivery._id} assigned successfully.`);
+      return savedDelivery;
+    } catch (error) {
+      this.logger.error(`Failed to assign delivery for Order ${dto.orderId}: ${error.message}`);
+      throw new BadRequestException('We could not assign the delivery. Please check the order and agent IDs.');
+    }
   }
 
   async updateStatus(id: string, status: DeliveryStatus): Promise<Delivery> {
+    this.logger.log(`Updating Delivery ${id} status to ${status}`);
     const delivery = await this.deliveryModel.findByIdAndUpdate(
       id,
       { status },
@@ -33,20 +48,15 @@ export class LogisticsService {
     );
 
     if (!delivery) {
-      throw new NotFoundException(`Delivery with ID ${id} not found`);
+      this.logger.warn(`Update failed: Delivery ${id} not found.`);
+      throw new NotFoundException('The delivery record could not be found.');
     }
 
-    // Logic: if delivery is COMPLETED, maybe trigger order.delivered event
-    // But since orders.service already does this on its own PATCH, we can keep them separate or link them.
-    // Let's emit an event just in case
-    if (status === DeliveryStatus.COMPLETED) {
-      this.eventEmitter.emit('delivery.completed', delivery);
-    }
-
+    this.logger.log(`Delivery ${id} is now ${status}.`);
     return delivery;
   }
 
-  async findAll() {
-    return this.deliveryModel.find().exec();
+  async findAll(): Promise<Delivery[]> {
+    return this.deliveryModel.find().populate('orderId').populate('deliveryAgentId').exec();
   }
 }
