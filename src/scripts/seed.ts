@@ -4,11 +4,17 @@ import * as dotenv from 'dotenv';
 
 dotenv.config();
 
-const MONGO_URI = process.env.MONGO_URI || 'mongodb+srv://ecom_db_user:ecom-crm@ecom-base.sadpecj.mongodb.net/?appName=ecom-base';
+// STRICTLY use environment variables only. Never hardcode secrets.
+const MONGO_URI = process.env.MONGO_URI;
+
+if (!MONGO_URI) {
+  console.error('ERROR: MONGO_URI environment variable is not defined.');
+  process.exit(1);
+}
 
 async function seed() {
   console.log('Connecting to database...');
-  const connection = await mongoose.createConnection(MONGO_URI).asPromise();
+  const connection = await mongoose.createConnection(MONGO_URI!).asPromise();
   console.log('Connected to:', connection.name);
 
   // Clear existing data
