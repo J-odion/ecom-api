@@ -43,7 +43,7 @@ export class AuthService {
       this.logger.log(`User registered successfully: ${dto.email}. OTP generated.`);
       
       // Real Email Integration
-      await this.mailService.sendOtp(dto.email, otp, dto.name);
+      await this.mailService.sendOtp(dto.email, otp, dto.fullName);
 
       return {
         message: 'Account created successfully! We have sent a 6-digit verification code to your email.',
@@ -75,7 +75,7 @@ export class AuthService {
     this.logger.log(`New OTP generated and sent to ${email}`);
     
     // Real Email Integration
-    await this.mailService.sendOtp(email, otp, user.name);
+    await this.mailService.sendOtp(email, otp, user.fullName);
 
     return { message: 'A new verification code has been sent to your email. It will expire in 10 minutes.' };
   }
@@ -129,7 +129,7 @@ export class AuthService {
     this.logger.log(`Password reset OTP sent to ${email}`);
     
     // Real Email Integration
-    await this.mailService.sendOtp(email, otp, user.name);
+    await this.mailService.sendOtp(email, otp, user.fullName);
 
     return { message: 'We have sent a password reset code to your email. Please use it to set a new password.' };
   }
