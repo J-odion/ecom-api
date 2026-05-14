@@ -1,8 +1,8 @@
 export enum Role {
   ADMIN = 'admin',
+  MANAGER = 'manager',
+  MEDIA_BUYER = 'media_buyer',
   CUSTOMER_SERVICE = 'customer_service',
   LOGISTICS = 'logistics',
   ACCOUNTANT = 'accountant',
-  SALES_AGENT = 'sales_agent',
-  DELIVERY_AGENT = 'delivery_agent',
 }

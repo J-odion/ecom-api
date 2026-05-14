@@ -65,6 +65,12 @@ export class Order {
   
   @Prop({ type: Types.ObjectId, ref: 'Lead' })
   leadId: Types.ObjectId; // The lead this order originated from
+
+  @Prop({ type: Types.ObjectId, ref: 'Location' })
+  fulfillmentLocationId: Types.ObjectId; // The office/warehouse fulfilling this order
+
+  @Prop()
+  notes: string;
 }
 
 export const OrderSchema = SchemaFactory.createForClass(Order);

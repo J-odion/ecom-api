@@ -7,8 +7,6 @@ import { UserDocument } from '../users/schemas/user.schema';
 import { RegisterDto } from './dto/register.dto';
 import { Role } from '../../common/enums/role.enum';
 
-
-
 @Injectable()
 export class AuthService {
   constructor(
@@ -19,7 +17,7 @@ export class AuthService {
   async register(dto: RegisterDto) {
     return this.usersService.create({
       ...dto,
-      role: Role.SALES_AGENT, // Default role for public signup
+      role: Role.CUSTOMER_SERVICE, // Default role for public signup
     });
   }
 

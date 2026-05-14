@@ -13,6 +13,7 @@ import {
 import type { OrderDocument } from '../orders/schemas/order.schema';
 import { UsersService } from '../users/users.service';
 import { CommissionRulesService } from '../commission-rules/commission-rules.service';
+import { Product, ProductDocument } from '../products/schemas/product.schema';
 
 @Injectable()
 export class FinanceService {
@@ -21,6 +22,7 @@ export class FinanceService {
   constructor(
     @InjectModel(Wallet.name) private walletModel: Model<WalletDocument>,
     @InjectModel(Transaction.name) private transactionModel: Model<TransactionDocument>,
+    @InjectModel(Product.name) private productModel: Model<ProductDocument>,
     private readonly usersService: UsersService,
     private readonly commissionRulesService: CommissionRulesService,
   ) {}
@@ -55,7 +57,7 @@ export class FinanceService {
 
   @OnEvent('order.cash_remitted')
   async handleOrderCashRemittedEvent(order: OrderDocument) {
-    this.logger.log(`Handling financial transaction for order ${order._id}`);
+    this.logger.log(`Handling financial transactions for order ${order._id}`);
 
     // Check if revenue has already been recorded for this order (Idempotency)
     const existingRevenue = await this.transactionModel.findOne({
@@ -86,7 +88,7 @@ export class FinanceService {
       { $inc: { balance: order.totalAmount } },
     );
 
-    // 2. Calculate and process Agent Commission
+    // 2. Process Agent Commission
     if (order.agentId) {
       try {
         const agent = await this.usersService.findOne(order.agentId.toString());
@@ -104,7 +106,7 @@ export class FinanceService {
           if (totalCommissionAmount > 0) {
             const agentWallet = await this.getOrCreateWallet(order.agentId, WalletType.STAFF);
 
-            // Debit System Wallet for Commission
+            // Debit System Wallet
             const sysCommissionTx = new this.transactionModel({
               orderId: order._id,
               walletId: systemWallet._id,
@@ -126,7 +128,6 @@ export class FinanceService {
             });
             await agentCommissionTx.save();
 
-            // Atomic updates
             await this.walletModel.updateOne(
               { _id: systemWallet._id },
               { $inc: { balance: -totalCommissionAmount } },
@@ -140,6 +141,50 @@ export class FinanceService {
       } catch (err) {
         this.logger.error(`Failed to process commission for agent ${order.agentId}`, err);
       }
+    }
+
+    // 3. Record Delivery Fee (Debit System)
+    if (order.deliveryFee > 0) {
+      const deliveryTx = new this.transactionModel({
+        orderId: order._id,
+        walletId: systemWallet._id,
+        amount: order.deliveryFee,
+        type: TransactionType.DEBIT,
+        category: TransactionCategory.LOGISTICS,
+        description: `Delivery fee for Order ${order._id}`,
+      });
+      await deliveryTx.save();
+
+      await this.walletModel.updateOne(
+        { _id: systemWallet._id },
+        { $inc: { balance: -order.deliveryFee } },
+      );
+    }
+
+    // 4. Record Product Cost (COGS) (Debit System)
+    let totalCogs = 0;
+    for (const item of order.items) {
+      const product = await this.productModel.findById(item.productId);
+      if (product) {
+        totalCogs += product.baseCost * item.qty;
+      }
+    }
+
+    if (totalCogs > 0) {
+      const cogsTx = new this.transactionModel({
+        orderId: order._id,
+        walletId: systemWallet._id,
+        amount: totalCogs,
+        type: TransactionType.DEBIT,
+        category: TransactionCategory.COGS,
+        description: `COGS for Order ${order._id}`,
+      });
+      await cogsTx.save();
+
+      await this.walletModel.updateOne(
+        { _id: systemWallet._id },
+        { $inc: { balance: -totalCogs } },
+      );
     }
   }
 }

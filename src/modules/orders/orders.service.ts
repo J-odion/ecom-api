@@ -15,8 +15,11 @@ export class OrdersService {
   ) {}
 
   async create(createOrderDto: CreateOrderDto): Promise<Order> {
-    // 1. Validate and reserve stock
-    await this.inventoryService.validateAndReserveStock(createOrderDto.items);
+    // 1. Validate and reserve stock at the specific location
+    await this.inventoryService.validateAndReserveStock(
+      createOrderDto.items, 
+      createOrderDto.fulfillmentLocationId
+    );
 
     const order = new this.orderModel({
       ...createOrderDto,
@@ -24,6 +27,7 @@ export class OrdersService {
       agentId: createOrderDto.agentId ? new Types.ObjectId(createOrderDto.agentId) : null,
       logisticsId: createOrderDto.logisticsId ? new Types.ObjectId(createOrderDto.logisticsId) : null,
       leadId: createOrderDto.leadId ? new Types.ObjectId(createOrderDto.leadId) : null,
+      fulfillmentLocationId: createOrderDto.fulfillmentLocationId ? new Types.ObjectId(createOrderDto.fulfillmentLocationId) : null,
     });
 
     const savedOrder = await order.save();
@@ -48,7 +52,6 @@ export class OrdersService {
       this.eventEmitter.emit('order.delivered', order);
     } else if (status === OrderStatus.FAILED) {
       // We don't automatically restock on FAILED. CS must follow up. 
-      // If CS cancels later, then we emit order.cancelled.
     }
 
     return order;

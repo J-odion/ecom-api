@@ -19,6 +19,8 @@ import { ProductsModule } from './modules/products/products.module';
 import { CommissionRulesModule } from './modules/commission-rules/commission-rules.module';
 import { LeadsModule } from './modules/leads/leads.module';
 import { MediaBuyersModule } from './modules/media-buyers/media-buyers.module';
+import { AnalyticsModule } from './modules/analytics/analytics.module';
+import { LocationsModule } from './modules/locations/locations.module';
 
 @Module({
   imports: [
@@ -35,6 +37,8 @@ import { MediaBuyersModule } from './modules/media-buyers/media-buyers.module';
     CommissionRulesModule,
     LeadsModule,
     MediaBuyersModule,
+    AnalyticsModule,
+    LocationsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

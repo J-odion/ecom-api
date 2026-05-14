@@ -8,4 +8,6 @@ export class CreateOrderDto {
   totalAmount: number;
   deliveryType?: string;
   leadId?: string;
+  fulfillmentLocationId?: string;
+  notes?: string;
 }

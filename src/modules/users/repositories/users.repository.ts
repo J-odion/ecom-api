@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 
 import { User, UserDocument } from '../schemas/user.schema';
 
@@ -11,19 +11,27 @@ export class UsersRepository {
     private readonly userModel: Model<UserDocument>,
   ) {}
 
-  create(data: Partial<User>) {
+  async create(data: Partial<User>) {
     return this.userModel.create(data);
   }
 
-  findByEmail(email: string) {
-    return this.userModel.findOne({ email });
+  async findByEmail(email: string) {
+    return this.userModel.findOne({ email }).populate('locationId').exec();
   }
 
-  findById(id: string) {
-    return this.userModel.findById(id);
+  async findById(id: string) {
+    return this.userModel.findById(id).populate('locationId').exec();
   }
 
-  findByRole(role: string) {
-    return this.userModel.find({ role }).exec();
+  async findByRole(role: string) {
+    return this.userModel.find({ role, isActive: true }).populate('locationId').exec();
+  }
+
+  async findAll() {
+    return this.userModel.find().populate('locationId').exec();
+  }
+
+  async update(id: string, data: Partial<User>) {
+    return this.userModel.findByIdAndUpdate(id, data, { new: true }).exec();
   }
 }
