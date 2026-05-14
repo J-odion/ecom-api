@@ -9,7 +9,7 @@ import { Types } from 'mongoose';
 export class UsersService {
   constructor(private readonly usersRepository: UsersRepository) {}
 
-  async create(dto: CreateUserDto) {
+  async create(dto: any) {
     const hashed = await bcrypt.hash(dto.password, 10);
 
     const userData: any = {
@@ -17,7 +17,7 @@ export class UsersService {
       password: hashed,
     };
 
-    if (dto.locationId) {
+    if (dto.locationId && typeof dto.locationId === 'string') {
       userData.locationId = new Types.ObjectId(dto.locationId);
     }
 
@@ -38,12 +38,12 @@ export class UsersService {
     return this.usersRepository.findAll();
   }
 
-  async update(id: string, dto: Partial<CreateUserDto>) {
+  async update(id: string, dto: any) {
     const data: any = { ...dto };
     if (dto.password) {
       data.password = await bcrypt.hash(dto.password, 10);
     }
-    if (dto.locationId) {
+    if (dto.locationId && typeof dto.locationId === 'string') {
       data.locationId = new Types.ObjectId(dto.locationId);
     }
     const user = await this.usersRepository.update(id, data);
