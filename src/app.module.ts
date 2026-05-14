@@ -22,6 +22,7 @@ import { MediaBuyersModule } from './modules/media-buyers/media-buyers.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { LocationsModule } from './modules/locations/locations.module';
 import { LeadFormsModule } from './modules/lead-forms/lead-forms.module';
+import { MailModule } from './modules/mail/mail.module';
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { LeadFormsModule } from './modules/lead-forms/lead-forms.module';
     AnalyticsModule,
     LocationsModule,
     LeadFormsModule,
+    MailModule,
   ],
   controllers: [AppController],
   providers: [AppService],

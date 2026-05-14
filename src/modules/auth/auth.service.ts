@@ -6,6 +6,7 @@ import { UsersService } from '../users/users.service';
 import { UserDocument } from '../users/schemas/user.schema';
 import { RegisterDto } from './dto/register.dto';
 import { Role } from '../../common/enums/role.enum';
+import { MailService } from '../mail/mail.service';
 
 @Injectable()
 export class AuthService {
@@ -14,6 +15,7 @@ export class AuthService {
   constructor(
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
+    private readonly mailService: MailService,
   ) {}
 
   async register(dto: RegisterDto) {
@@ -39,7 +41,9 @@ export class AuthService {
       });
 
       this.logger.log(`User registered successfully: ${dto.email}. OTP generated.`);
-      this.logger.debug(`[EMAIL SIMULATION] Registration OTP for ${dto.email}: ${otp}`);
+      
+      // Real Email Integration
+      await this.mailService.sendOtp(dto.email, otp, dto.name);
 
       return {
         message: 'Account created successfully! We have sent a 6-digit verification code to your email.',
@@ -69,7 +73,9 @@ export class AuthService {
     });
 
     this.logger.log(`New OTP generated and sent to ${email}`);
-    this.logger.debug(`[EMAIL SIMULATION] Resent OTP for ${email}: ${otp}`);
+    
+    // Real Email Integration
+    await this.mailService.sendOtp(email, otp, user.name);
 
     return { message: 'A new verification code has been sent to your email. It will expire in 10 minutes.' };
   }
@@ -121,7 +127,9 @@ export class AuthService {
     });
 
     this.logger.log(`Password reset OTP sent to ${email}`);
-    this.logger.debug(`[EMAIL SIMULATION] Password Reset OTP for ${email}: ${otp}`);
+    
+    // Real Email Integration
+    await this.mailService.sendOtp(email, otp, user.name);
 
     return { message: 'We have sent a password reset code to your email. Please use it to set a new password.' };
   }
