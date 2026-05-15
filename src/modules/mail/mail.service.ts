@@ -16,6 +16,7 @@ export class MailService {
         user: this.configService.get<string>('MAIL_USER'),
         pass: this.configService.get<string>('MAIL_PASS'),
       },
+      connectionTimeout: 10000, // 10 seconds timeout
     });
   }
 
@@ -23,6 +24,7 @@ export class MailService {
     const html = this.getOtpTemplate(otp, userName);
 
     try {
+      this.logger.log(`Attempting to send OTP to ${email}...`);
       await this.transporter.sendMail({
         from: `"E-commerce CRM" <${this.configService.get('MAIL_FROM')}>`,
         to: email,
@@ -32,8 +34,14 @@ export class MailService {
       this.logger.log(`OTP email sent successfully to ${email}`);
     } catch (error) {
       this.logger.error(`Failed to send OTP email to ${email}: ${error.message}`);
-      // Don't throw error here to avoid blocking auth flow if email fails in dev, 
-      // but in production, you might want to handle this.
+      
+      // Fallback for Development: Log to console so user isn't blocked
+      this.logger.warn('--- MAIL FALLBACK ---');
+      this.logger.warn(`OTP for ${email} (${userName}): ${otp}`);
+      this.logger.warn('---------------------');
+      
+      // We don't rethrow the error here to ensure the user creation/auth flow finishes
+      // especially in dev environments with SMTP issues.
     }
   }
 

@@ -17,13 +17,9 @@ async function bootstrap() {
 
   app.enableCors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (like mobile apps or curl) 
-      // or those in our allowed list
       if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
-        // Special case: Always allow Lead Capture origins for the embeddable forms
-        // In a more strict setup, you would validate the 'origin' against a database of allowed domains
         callback(null, true);
       }
     },
@@ -38,13 +34,25 @@ async function bootstrap() {
   }));
 
   const config = new DocumentBuilder()
-    .setTitle('Ecommerce CRM API')
-    .setVersion('1.0')
+    .setTitle('E-commerce CRM Enterprise API')
+    .setDescription('A high-performance operations infrastructure for multi-location inventory, intelligent lead tracking, and automated financial settlements.')
+    .setVersion('1.2.0')
     .addBearerAuth()
+    .addTag('Authentication', 'Staff registration, verification, and session management')
+    .addTag('Leads', 'Intelligent lead capture, identity tracking, and smart assignment')
+    .addTag('Lead Forms', 'Embeddable form configuration and management')
+    .addTag('Inventory', 'Multi-location stock tracking and reservation')
+    .addTag('Orders', 'Order lifecycle from scheduling to cash remittance')
+    .addTag('Finance', 'Revenue, COGS, and commission payout management')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('docs', app, document);
+  SwaggerModule.setup('docs', app, document, {
+    swaggerOptions: {
+      persistAuthorization: true,
+    },
+    customSiteTitle: 'CRM API Docs',
+  });
 
   const port = process.env.PORT || 8980;
   await app.listen(port);
