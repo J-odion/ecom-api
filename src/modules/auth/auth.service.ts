@@ -44,6 +44,7 @@ export class AuthService {
       this.logger.log(`New staff member registered: ${sanitizedEmail}`);
 
       return {
+        success: true,
         message: 'Account created! Please check your email for the 6-digit verification code.',
         userId: user._id,
       };
@@ -71,7 +72,7 @@ export class AuthService {
     await this.mailService.sendOtp(sanitizedEmail, otp, user.fullName);
     this.logger.log(`New OTP sent to ${sanitizedEmail}`);
 
-    return { message: 'A new code has been sent to your email.' };
+    return { success: true, message: 'A new code has been sent to your email.' };
   }
 
   async verifyOtp(email: string, otp: string) {
@@ -81,6 +82,12 @@ export class AuthService {
     const user = await this.usersService.findByEmail(sanitizedEmail);
     if (!user) {
       throw new BadRequestException('Verification failed. Account not found.');
+    }
+
+    // Handle "Already Verified" case (prevents errors on double-click)
+    if (user.isVerified) {
+      this.logger.log(`User ${sanitizedEmail} already verified. Returning success.`);
+      return { success: true, message: 'Email already verified! You can now log in.' };
     }
 
     if (user.otp !== sanitizedOtp) {
@@ -99,7 +106,7 @@ export class AuthService {
     });
 
     this.logger.log(`User ${sanitizedEmail} verified successfully.`);
-    return { message: 'Email verified! You can now log in.' };
+    return { success: true, message: 'Email verified! You can now log in.' };
   }
 
   async forgotPassword(email: string) {
@@ -118,7 +125,7 @@ export class AuthService {
     });
 
     await this.mailService.sendOtp(user.email, otp, user.fullName);
-    return { message: 'Reset code sent to your email.' };
+    return { success: true, message: 'Reset code sent to your email.' };
   }
 
   async resetPassword(email: string, otp: string, newPass: string) {
@@ -146,7 +153,7 @@ export class AuthService {
     });
 
     this.logger.log(`Password reset successful for ${sanitizedEmail}`);
-    return { message: 'Password updated successfully.' };
+    return { success: true, message: 'Password updated successfully.' };
   }
 
   async validateUser(email: string, pass: string) {
@@ -172,6 +179,7 @@ export class AuthService {
   async login(user: UserDocument) {
     const payload = { sub: user._id, role: user.role };
     return {
+      success: true,
       access_token: this.jwtService.sign(payload),
     };
   }

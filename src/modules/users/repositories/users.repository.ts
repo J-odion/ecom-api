@@ -32,6 +32,7 @@ export class UsersRepository {
   }
 
   async update(id: string, data: Partial<User>) {
-    return this.userModel.findByIdAndUpdate(id, data, { new: true }).exec();
+    // Fixed deprecated 'new' option for Mongoose
+    return this.userModel.findByIdAndUpdate(id, data, { returnDocument: 'after' }).exec();
   }
 }
