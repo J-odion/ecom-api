@@ -28,6 +28,10 @@ export class CreateLeadDto {
   sourceMediaBuyerId?: string;
 
   @IsOptional()
+  @IsMongoId()
+  leadFormId?: string;
+
+  @IsOptional()
   @IsEnum(LeadSource, { message: 'Invalid lead source.' })
   source?: LeadSource;
 

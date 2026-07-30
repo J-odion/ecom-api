@@ -8,12 +8,15 @@ import { UsersModule } from '../users/user.module';
 import { CommissionRulesModule } from '../commission-rules/commission-rules.module';
 import { Product, ProductSchema } from '../products/schemas/product.schema';
 
+import { Lead, LeadSchema } from '../leads/schemas/lead.schema';
+
 @Module({
   imports: [
     MongooseModule.forFeature([
       { name: Wallet.name, schema: WalletSchema },
       { name: Transaction.name, schema: TransactionSchema },
       { name: Product.name, schema: ProductSchema },
+      { name: Lead.name, schema: LeadSchema },
     ]),
     UsersModule,
     CommissionRulesModule,

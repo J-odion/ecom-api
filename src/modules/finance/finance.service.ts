@@ -8,6 +8,8 @@ import { Wallet, WalletDocument, WalletType } from './schemas/wallet.schema';
 import { OrderDocument } from '../orders/schemas/order.schema';
 import { CommissionRulesService } from '../commission-rules/commission-rules.service';
 import { Product, ProductDocument } from '../products/schemas/product.schema';
+import { UsersService } from '../users/users.service';
+import { Lead, LeadDocument } from '../leads/schemas/lead.schema';
 
 @Injectable()
 export class FinanceService {
@@ -17,7 +19,9 @@ export class FinanceService {
     @InjectModel(Transaction.name) private transactionModel: Model<TransactionDocument>,
     @InjectModel(Wallet.name) private walletModel: Model<WalletDocument>,
     @InjectModel(Product.name) private productModel: Model<ProductDocument>,
+    @InjectModel(Lead.name) private leadModel: Model<LeadDocument>,
     private commissionRulesService: CommissionRulesService,
+    private usersService: UsersService,
   ) {}
 
   @OnEvent('order.cash_remitted')
@@ -59,6 +63,33 @@ export class FinanceService {
             orderId: orderDoc._id as Types.ObjectId,
           });
           this.logger.log(`Total Commission of ${totalCommission} awarded to Agent ${orderDoc.agentId}`);
+        }
+      }
+
+      // 2.5 Pay Commission to Media Buyer if order has a lead with sourceMediaBuyerId
+      if (orderDoc.leadId) {
+        const lead = await this.leadModel.findById(orderDoc.leadId);
+        if (lead && lead.sourceMediaBuyerId) {
+          try {
+            const mb = await this.usersService.findOne(lead.sourceMediaBuyerId.toString());
+            if (mb) {
+              const mbRate = mb.commissionRate !== undefined ? mb.commissionRate : 10;
+              const mbCommission = (orderDoc.totalAmount * mbRate) / 100;
+              if (mbCommission > 0) {
+                await this.recordTransaction({
+                  userId: lead.sourceMediaBuyerId,
+                  type: TransactionType.CREDIT,
+                  category: TransactionCategory.COMMISSION,
+                  amount: mbCommission,
+                  description: `Media Buyer Commission for Order ${orderDoc._id} (Lead Form: ${lead.leadFormId || 'N/A'})`,
+                  orderId: orderDoc._id as Types.ObjectId,
+                });
+                this.logger.log(`Media Buyer Commission of ${mbCommission} awarded to Media Buyer ${lead.sourceMediaBuyerId}`);
+              }
+            }
+          } catch (e) {
+            this.logger.error(`Failed to award Media Buyer commission: ${e.message}`);
+          }
         }
       }
 

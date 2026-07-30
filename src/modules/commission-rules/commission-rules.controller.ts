@@ -5,9 +5,13 @@ import { CreateCommissionRuleDto } from './dto/create-commission-rule.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 
+import { Roles } from '../../common/decorators/roles.decorator';
+import { Role } from '../../common/enums/role.enum';
+
 @ApiTags('Commission Rules')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(Role.ADMIN, Role.DEV)
 @Controller('commission-rules')
 export class CommissionRulesController {
   constructor(private readonly commissionRulesService: CommissionRulesService) {}

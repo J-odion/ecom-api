@@ -27,6 +27,6 @@ describe('FinanceController', () => {
   });
 
   it('should return wallet balance', async () => {
-    expect(await controller.getWalletBalance('123')).toBe(5000);
+    expect(await controller.getWalletBalance('123', { user: { _id: '123', role: 'admin' } })).toBe(5000);
   });
 });

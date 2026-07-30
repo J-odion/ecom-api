@@ -49,6 +49,9 @@ export class Lead {
   @Prop({ type: Types.ObjectId, ref: 'User', default: null, index: true })
   assignedTo: Types.ObjectId;
 
+  @Prop({ type: Types.ObjectId, ref: 'LeadForm', default: null, index: true })
+  leadFormId?: Types.ObjectId;
+
   @Prop({ type: Types.ObjectId, ref: 'User', default: null })
   sourceMediaBuyerId: Types.ObjectId;
 

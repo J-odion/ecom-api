@@ -5,6 +5,9 @@ import { SpendLog, SpendLogDocument } from './schemas/spend-log.schema';
 import { CreateSpendLogDto } from './dto/create-spend-log.dto';
 import { Lead, LeadDocument } from '../leads/schemas/lead.schema';
 import { Order, OrderDocument, OrderStatus } from '../orders/schemas/order.schema';
+import { User, UserDocument } from '../users/schemas/user.schema';
+import { Transaction, TransactionDocument, TransactionType, TransactionCategory } from '../finance/schemas/transaction.schema';
+import { Wallet, WalletDocument } from '../finance/schemas/wallet.schema';
 
 @Injectable()
 export class MediaBuyersService {
@@ -12,6 +15,9 @@ export class MediaBuyersService {
     @InjectModel(SpendLog.name) private spendLogModel: Model<SpendLogDocument>,
     @InjectModel(Lead.name) private leadModel: Model<LeadDocument>,
     @InjectModel(Order.name) private orderModel: Model<OrderDocument>,
+    @InjectModel(User.name) private userModel: Model<UserDocument>,
+    @InjectModel(Transaction.name) private transactionModel: Model<TransactionDocument>,
+    @InjectModel(Wallet.name) private walletModel: Model<WalletDocument>,
   ) {}
 
   async createSpendLog(createSpendLogDto: CreateSpendLogDto): Promise<SpendLog> {
@@ -72,5 +78,65 @@ export class MediaBuyersService {
       deliveryRate: Number(deliveryRate.toFixed(2)),
       cpa: Number(cpa.toFixed(2))
     };
+  }
+
+  async getTeamDashboard() {
+    const mediaBuyers = await this.userModel.find({ role: 'media_buyer', isActive: true }).exec();
+
+    const teamGroups = new Map<string, any[]>();
+    for (const mb of mediaBuyers) {
+      const team = mb.team || 'Unassigned';
+      if (!teamGroups.has(team)) {
+        teamGroups.set(team, []);
+      }
+      teamGroups.get(team)!.push(mb);
+    }
+
+    const results = [];
+
+    for (const [teamName, mbs] of teamGroups.entries()) {
+      const mbIds = mbs.map(mb => mb._id);
+
+      const spendLogs = await this.spendLogModel.find({ mediaBuyerId: { $in: mbIds } }).exec();
+      const spent = spendLogs.reduce((sum, log) => sum + log.amountSpent, 0);
+
+      const leads = await this.leadModel.find({ sourceMediaBuyerId: { $in: mbIds } }).select('_id').exec();
+      const leadIds = leads.map(l => l._id);
+
+      const orderCounts = await this.orderModel.countDocuments({ leadId: { $in: leadIds } });
+
+      const deliveredOrdersCount = await this.orderModel.countDocuments({
+        leadId: { $in: leadIds },
+        status: { $in: [OrderStatus.DELIVERED, OrderStatus.CASH_REMITTED] },
+      });
+
+      const deliveryRate = orderCounts > 0 ? (deliveredOrdersCount / orderCounts) * 100 : 0;
+
+      const remittedOrders = await this.orderModel.find({
+        leadId: { $in: leadIds },
+        status: OrderStatus.CASH_REMITTED,
+      }).select('totalAmount').exec();
+      const earnings = remittedOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
+
+      const wallets = await this.walletModel.find({ userId: { $in: mbIds } }).exec();
+      const walletIds = wallets.map(w => w._id);
+      const commissionTx = await this.transactionModel.find({
+        walletId: { $in: walletIds },
+        type: TransactionType.CREDIT,
+        category: TransactionCategory.COMMISSION,
+      }).exec();
+      const commissions = commissionTx.reduce((sum, tx) => sum + tx.amount, 0);
+
+      results.push({
+        team: teamName,
+        spent,
+        orderCounts,
+        deliveryRate: Number(deliveryRate.toFixed(2)),
+        earnings,
+        commissions,
+      });
+    }
+
+    return results;
   }
 }

@@ -23,6 +23,9 @@ import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { LocationsModule } from './modules/locations/locations.module';
 import { LeadFormsModule } from './modules/lead-forms/lead-forms.module';
 import { MailModule } from './modules/mail/mail.module';
+import { AuditTrailModule } from './modules/audit-trail/audit-trail.module';
+import { APP_INTERCEPTOR } from '@nestjs/core';
+import { AuditTrailInterceptor } from './common/interceptors/audit-trail.interceptor';
 
 @Module({
   imports: [
@@ -43,8 +46,15 @@ import { MailModule } from './modules/mail/mail.module';
     LocationsModule,
     LeadFormsModule,
     MailModule,
+    AuditTrailModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: AuditTrailInterceptor,
+    },
+  ],
 })
 export class AppModule {}

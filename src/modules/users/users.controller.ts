@@ -25,15 +25,15 @@ export class UsersController {
   constructor(private usersService: UsersService) {}
 
   @Post()
-  @Roles(Role.ADMIN, Role.MANAGER)
-  @ApiOperation({ summary: 'Create a new staff user (Admin/Manager only)' })
+  @Roles(Role.ADMIN, Role.MANAGER, Role.DEV)
+  @ApiOperation({ summary: 'Create a new staff user (Admin/Manager/Dev only)' })
   create(@Body() dto: CreateUserDto) {
     return this.usersService.create(dto);
   }
 
   @Get()
-  @Roles(Role.ADMIN, Role.MANAGER)
-  @ApiOperation({ summary: 'List all staff users (Admin/Manager only)' })
+  @Roles(Role.ADMIN, Role.MANAGER, Role.DEV)
+  @ApiOperation({ summary: 'List all staff users (Admin/Manager/Dev only)' })
   findAll() {
     return this.usersService.findAll();
   }
@@ -45,15 +45,15 @@ export class UsersController {
   }
 
   @Patch(':id')
-  @Roles(Role.ADMIN)
-  @ApiOperation({ summary: 'Update user role/location (Admin only)' })
+  @Roles(Role.ADMIN, Role.DEV)
+  @ApiOperation({ summary: 'Update user role/location (Admin/Dev only)' })
   update(@Param('id') id: string, @Body() dto: Partial<CreateUserDto>) {
     return this.usersService.update(id, dto);
   }
 
   @Patch(':id/toggle-status')
-  @Roles(Role.ADMIN)
-  @ApiOperation({ summary: 'Enable/Disable user account (Admin only)' })
+  @Roles(Role.ADMIN, Role.DEV)
+  @ApiOperation({ summary: 'Enable/Disable user account (Admin/Dev only)' })
   toggleStatus(@Param('id') id: string) {
     return this.usersService.toggleStatus(id);
   }

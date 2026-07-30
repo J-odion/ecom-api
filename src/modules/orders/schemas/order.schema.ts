@@ -71,6 +71,12 @@ export class Order {
 
   @Prop()
   notes: string;
+
+  @Prop({ type: Date })
+  deliveryDate?: Date;
+
+  @Prop({ type: Date, index: true })
+  followUpDate?: Date;
 }
 
 export const OrderSchema = SchemaFactory.createForClass(Order);

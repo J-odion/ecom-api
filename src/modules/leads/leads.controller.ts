@@ -8,9 +8,23 @@ import { Public } from '../../common/decorators/public.decorator';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { LeadStatus } from './schemas/lead.schema';
 
+import { Roles } from '../../common/decorators/roles.decorator';
+import { Role } from '../../common/enums/role.enum';
+
 @ApiTags('Leads')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(
+  Role.ADMIN,
+  Role.MANAGER,
+  Role.CUSTOMER_SERVICE,
+  Role.CUSTOMER_SERVICE_MANAGER,
+  Role.LOGISTICS,
+  Role.LOGISTICS_MANAGER,
+  Role.MARKETING_MANAGER,
+  Role.ACCOUNTANT,
+  Role.DEV,
+)
 @Controller('leads')
 export class LeadsController {
   constructor(private readonly leadsService: LeadsService) {}

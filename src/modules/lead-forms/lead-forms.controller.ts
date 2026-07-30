@@ -10,6 +10,9 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { Public } from '../../common/decorators/public.decorator';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 
+import { Roles } from '../../common/decorators/roles.decorator';
+import { Role } from '../../common/enums/role.enum';
+
 @ApiTags('Lead Forms')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -18,6 +21,7 @@ export class LeadFormsController {
   constructor(private readonly leadFormsService: LeadFormsService) {}
 
   @Post()
+  @Roles(Role.ADMIN, Role.DEV)
   @ApiOperation({ summary: 'Admin: Create a new embeddable lead capture form' })
   create(@Body() dto: CreateLeadFormDto) {
     return this.leadFormsService.create(dto);
@@ -36,12 +40,14 @@ export class LeadFormsController {
   }
 
   @Patch(':id')
+  @Roles(Role.ADMIN, Role.DEV)
   @ApiOperation({ summary: 'Admin: Update a lead form configuration' })
   update(@Param('id') id: string, @Body() dto: Partial<CreateLeadFormDto>) {
     return this.leadFormsService.update(id, dto);
   }
 
   @Delete(':id')
+  @Roles(Role.ADMIN, Role.DEV)
   @ApiOperation({ summary: 'Admin: Delete a lead form' })
   remove(@Param('id') id: string) {
     return this.leadFormsService.remove(id);

@@ -41,6 +41,7 @@ export class LeadsService {
         status: LeadStatus.PARTIAL,
         entryType: LeadEntryType.FORM,
         productId: createLeadDto.productId ? new Types.ObjectId(createLeadDto.productId) : undefined,
+        leadFormId: createLeadDto.leadFormId ? new Types.ObjectId(createLeadDto.leadFormId) : undefined,
         quantity: createLeadDto.quantity || 1,
       });
       return newLead.save();
@@ -85,6 +86,7 @@ export class LeadsService {
         ...dto,
         productId: new Types.ObjectId(dto.productId),
         sourceMediaBuyerId: dto.sourceMediaBuyerId ? new Types.ObjectId(dto.sourceMediaBuyerId) : null,
+        leadFormId: dto.leadFormId ? new Types.ObjectId(dto.leadFormId) : null,
         status: LeadStatus.NEW,
         entryType,
         isDuplicate,
@@ -100,6 +102,7 @@ export class LeadsService {
       ...dto,
       productId: new Types.ObjectId(dto.productId),
       sourceMediaBuyerId: dto.sourceMediaBuyerId ? new Types.ObjectId(dto.sourceMediaBuyerId) : null,
+      leadFormId: dto.leadFormId ? new Types.ObjectId(dto.leadFormId) : null,
       status: LeadStatus.NEW,
       entryType,
       isDuplicate,

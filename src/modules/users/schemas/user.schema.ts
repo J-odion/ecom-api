@@ -24,6 +24,9 @@ export class User {
   @Prop({ default: 10 })
   commissionRate: number;
 
+  @Prop({ index: true })
+  team?: string;
+
   @Prop({ default: true })
   isActive: boolean;
 

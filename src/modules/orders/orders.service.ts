@@ -51,6 +51,9 @@ export class OrdersService {
     if (deliveryFee !== undefined) {
       updatePayload.deliveryFee = deliveryFee;
     }
+    if (status === OrderStatus.DELIVERED) {
+      updatePayload.deliveryDate = new Date();
+    }
 
     const order = await this.orderModel.findByIdAndUpdate(
       id,
@@ -118,6 +121,21 @@ export class OrdersService {
   async findOne(id: string): Promise<Order> {
     const order = await this.orderModel.findById(id).exec();
     if (!order) throw new NotFoundException('Order not found.');
+    return order;
+  }
+
+  async updateFollowUp(id: string, followUpDate: Date, notes?: string): Promise<Order> {
+    this.logger.log(`Updating follow-up date for Order ${id} to ${followUpDate}`);
+    const updatePayload: any = { followUpDate };
+    if (notes !== undefined) {
+      updatePayload.notes = notes;
+    }
+    const order = await this.orderModel.findByIdAndUpdate(
+      id,
+      updatePayload,
+      { new: true },
+    ).exec();
+    if (!order) throw new NotFoundException('Order not found');
     return order;
   }
 }

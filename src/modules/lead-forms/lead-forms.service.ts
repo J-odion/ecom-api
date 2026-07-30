@@ -4,6 +4,8 @@ import { Model, Types } from 'mongoose';
 import { LeadForm, LeadFormDocument } from './schemas/lead-form.schema';
 import { CreateLeadFormDto } from './dto/create-lead-form.dto';
 import { ConfigService } from '@nestjs/config';
+import { Lead, LeadDocument } from '../leads/schemas/lead.schema';
+import { Order, OrderDocument, OrderStatus } from '../orders/schemas/order.schema';
 
 @Injectable()
 export class LeadFormsService {
@@ -11,6 +13,8 @@ export class LeadFormsService {
 
   constructor(
     @InjectModel(LeadForm.name) private leadFormModel: Model<LeadFormDocument>,
+    @InjectModel(Lead.name) private leadModel: Model<LeadDocument>,
+    @InjectModel(Order.name) private orderModel: Model<OrderDocument>,
     private readonly configService: ConfigService,
   ) {}
 
@@ -23,14 +27,34 @@ export class LeadFormsService {
     return form.save();
   }
 
-  async findAll(): Promise<LeadForm[]> {
-    return this.leadFormModel.find().populate('productId').populate('sourceMediaBuyerId').exec();
+  async calculateFormEarnings(formId: string): Promise<number> {
+    const leads = await this.leadModel.find({ leadFormId: new Types.ObjectId(formId) }).select('_id').exec();
+    if (!leads || leads.length === 0) return 0;
+    const leadIds = leads.map(l => l._id);
+
+    const orders = await this.orderModel.find({
+      leadId: { $in: leadIds },
+      status: OrderStatus.CASH_REMITTED,
+    }).select('totalAmount').exec();
+
+    return orders.reduce((sum, order) => sum + (order.totalAmount || 0), 0);
   }
 
-  async findOne(id: string): Promise<LeadForm> {
-    const form = await this.leadFormModel.findById(id).populate('productId').exec();
+  async findAll() {
+    const forms = await this.leadFormModel.find().populate('productId').populate('sourceMediaBuyerId').lean().exec();
+    const results = [];
+    for (const form of forms) {
+      const earnings = await this.calculateFormEarnings((form as any)._id.toString());
+      results.push({ ...form, earnings });
+    }
+    return results;
+  }
+
+  async findOne(id: string) {
+    const form = await this.leadFormModel.findById(id).populate('productId').populate('sourceMediaBuyerId').lean().exec();
     if (!form) throw new NotFoundException('Lead form not found.');
-    return form;
+    const earnings = await this.calculateFormEarnings(id);
+    return { ...form, earnings };
   }
 
   async update(id: string, dto: Partial<CreateLeadFormDto>): Promise<LeadForm> {
@@ -44,6 +68,7 @@ export class LeadFormsService {
   }
 
   generateFormHtml(form: LeadFormDocument, apiBaseUrl: string): string {
+    const formId = form._id.toString();
     const productId = form.productId.toString();
     const mediaBuyerId = form.sourceMediaBuyerId ? form.sourceMediaBuyerId.toString() : '';
     const primaryColor = form.primaryColor || '#4F46E5';
@@ -135,6 +160,7 @@ export class LeadFormsService {
         <input type="number" id="quantity" name="quantity" value="1" min="1" />
       </div>` : ''}
       <input type="hidden" id="productId" name="productId" value="${productId}" />
+      <input type="hidden" id="leadFormId" name="leadFormId" value="${formId}" />
       <input type="hidden" id="sourceMediaBuyerId" name="sourceMediaBuyerId" value="${mediaBuyerId}" />
       <input type="hidden" id="source" name="source" value="${form.defaultSource || 'OTHER'}" />
       <button type="submit" id="submitBtn">${submitText}</button>
@@ -156,6 +182,7 @@ export class LeadFormsService {
         customerAddress: document.getElementById('customerAddress')?.value.trim() || undefined,
         productId: document.getElementById('productId').value,
         quantity: ${quantityField ? 'parseInt(document.getElementById("quantity").value)' : '1'},
+        leadFormId: document.getElementById('leadFormId')?.value || undefined,
       };
 
       try {
@@ -216,6 +243,7 @@ export class LeadFormsService {
         quantity: ${quantityField ? 'parseInt(document.getElementById("quantity").value)' : '1'},
         sourceMediaBuyerId: document.getElementById('sourceMediaBuyerId').value || undefined,
         source: document.getElementById('source').value,
+        leadFormId: document.getElementById('leadFormId')?.value || undefined,
       };
 
       try {

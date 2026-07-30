@@ -1,10 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { Order, OrderDocument, OrderStatus } from '../orders/schemas/order.schema';
 import { SpendLog, SpendLogDocument } from '../media-buyers/schemas/spend-log.schema';
 import { Product, ProductDocument } from '../products/schemas/product.schema';
-import { Transaction, TransactionDocument, TransactionCategory } from '../finance/schemas/transaction.schema';
+import { Transaction, TransactionDocument, TransactionCategory, TransactionType } from '../finance/schemas/transaction.schema';
+import { Wallet, WalletDocument } from '../finance/schemas/wallet.schema';
 
 @Injectable()
 export class AnalyticsService {
@@ -13,6 +14,7 @@ export class AnalyticsService {
     @InjectModel(SpendLog.name) private spendLogModel: Model<SpendLogDocument>,
     @InjectModel(Product.name) private productModel: Model<ProductDocument>,
     @InjectModel(Transaction.name) private transactionModel: Model<TransactionDocument>,
+    @InjectModel(Wallet.name) private walletModel: Model<WalletDocument>,
   ) {}
 
   async getManagementDashboard() {
@@ -76,6 +78,74 @@ export class AnalyticsService {
         cpa: Number(cpa.toFixed(2)),
         totalOrders: totalScheduled,
         deliveredOrders: totalDelivered
+      }
+    };
+  }
+
+  async getCsDashboard(agentId: string) {
+    const csId = new Types.ObjectId(agentId);
+
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    const endOfToday = new Date();
+    endOfToday.setHours(23, 59, 59, 999);
+
+    const todayDeliveriesCount = await this.orderModel.countDocuments({
+      agentId: csId,
+      status: { $in: [OrderStatus.DELIVERED, OrderStatus.CASH_REMITTED] },
+      $or: [
+        { deliveryDate: { $gte: startOfToday, $lte: endOfToday } },
+        { deliveryDate: { $exists: false }, updatedAt: { $gte: startOfToday, $lte: endOfToday } }
+      ]
+    });
+
+    const todayFollowUpCount = await this.orderModel.countDocuments({
+      agentId: csId,
+      followUpDate: { $gte: startOfToday, $lte: endOfToday }
+    });
+
+    const wallet = await this.walletModel.findOne({ userId: csId });
+    let earnings = 0;
+    if (wallet) {
+      const commissionTransactions = await this.transactionModel.find({
+        walletId: wallet._id,
+        type: TransactionType.CREDIT,
+        category: TransactionCategory.COMMISSION
+      }).exec();
+      earnings = commissionTransactions.reduce((sum, tx) => sum + tx.amount, 0);
+    }
+
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    sevenDaysAgo.setHours(0, 0, 0, 0);
+
+    const weeklyDeliveryCount = await this.orderModel.countDocuments({
+      agentId: csId,
+      status: { $in: [OrderStatus.DELIVERED, OrderStatus.CASH_REMITTED] },
+      $or: [
+        { deliveryDate: { $gte: sevenDaysAgo } },
+        { deliveryDate: { $exists: false }, updatedAt: { $gte: sevenDaysAgo } }
+      ]
+    });
+
+    const weeklyProcessedCount = await this.orderModel.countDocuments({
+      agentId: csId,
+      status: { $in: [OrderStatus.DELIVERED, OrderStatus.CASH_REMITTED, OrderStatus.FAILED, OrderStatus.CANCELLED] },
+      updatedAt: { $gte: sevenDaysAgo }
+    });
+
+    const rating = weeklyProcessedCount > 0
+      ? (weeklyDeliveryCount / weeklyProcessedCount) * 100
+      : 0;
+
+    return {
+      todayDeliveries: todayDeliveriesCount,
+      todayFollowUpOrders: todayFollowUpCount,
+      earnings,
+      rating: Number(rating.toFixed(2)),
+      metrics: {
+        weeklyDelivery: weeklyDeliveryCount,
+        weeklyProcessed: weeklyProcessedCount
       }
     };
   }

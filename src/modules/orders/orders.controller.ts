@@ -6,9 +6,23 @@ import { OrderStatus } from './schemas/order.schema';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 
+import { Roles } from '../../common/decorators/roles.decorator';
+import { Role } from '../../common/enums/role.enum';
+
 @ApiTags('Orders')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(
+  Role.ADMIN,
+  Role.MANAGER,
+  Role.CUSTOMER_SERVICE,
+  Role.CUSTOMER_SERVICE_MANAGER,
+  Role.LOGISTICS,
+  Role.LOGISTICS_MANAGER,
+  Role.MARKETING_MANAGER,
+  Role.ACCOUNTANT,
+  Role.DEV,
+)
 @Controller('orders')
 export class OrdersController {
   constructor(private readonly ordersService: OrdersService) {}
@@ -53,5 +67,14 @@ export class OrdersController {
   @ApiOperation({ summary: 'Cancel an order (RTS)' })
   cancelOrder(@Param('id') id: string) {
     return this.ordersService.cancelOrder(id);
+  }
+
+  @Patch(':id/follow-up')
+  @ApiOperation({ summary: 'Update follow-up date (CS)' })
+  updateFollowUpDate(
+    @Param('id') id: string,
+    @Body() updateDto: { followUpDate: string; notes?: string },
+  ) {
+    return this.ordersService.updateFollowUp(id, new Date(updateDto.followUpDate), updateDto.notes);
   }
 }

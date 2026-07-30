@@ -5,6 +5,9 @@ import { MediaBuyersService } from './media-buyers.service';
 import { SpendLog, SpendLogSchema } from './schemas/spend-log.schema';
 import { Lead, LeadSchema } from '../leads/schemas/lead.schema';
 import { Order, OrderSchema } from '../orders/schemas/order.schema';
+import { User, UserSchema } from '../users/schemas/user.schema';
+import { Transaction, TransactionSchema } from '../finance/schemas/transaction.schema';
+import { Wallet, WalletSchema } from '../finance/schemas/wallet.schema';
 
 @Module({
   imports: [
@@ -12,6 +15,9 @@ import { Order, OrderSchema } from '../orders/schemas/order.schema';
       { name: SpendLog.name, schema: SpendLogSchema },
       { name: Lead.name, schema: LeadSchema },
       { name: Order.name, schema: OrderSchema },
+      { name: User.name, schema: UserSchema },
+      { name: Transaction.name, schema: TransactionSchema },
+      { name: Wallet.name, schema: WalletSchema },
     ]),
   ],
   controllers: [MediaBuyersController],

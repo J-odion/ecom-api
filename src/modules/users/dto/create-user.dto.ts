@@ -27,4 +27,9 @@ export class CreateUserDto {
   @ApiProperty({ required: false })
   @IsOptional()
   commissionRate?: number;
+
+  @ApiProperty({ required: false, example: 'Team Alpha' })
+  @IsOptional()
+  @IsString()
+  team?: string;
 }
