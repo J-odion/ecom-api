@@ -18,7 +18,7 @@ export class AuditTrailService {
     action: string;
     details?: Record<string, any>;
     ip?: string;
-  }): Promise<AuditTrail> {
+  }): Promise<AuditTrail | void> {
     try {
       const log = new this.auditModel(data);
       const saved = await log.save();

@@ -42,7 +42,7 @@ export class LeadFormsService {
 
   async findAll() {
     const forms = await this.leadFormModel.find().populate('productId').populate('sourceMediaBuyerId').lean().exec();
-    const results = [];
+    const results: any[] = [];
     for (const form of forms) {
       const earnings = await this.calculateFormEarnings((form as any)._id.toString());
       results.push({ ...form, earnings });

@@ -92,7 +92,7 @@ export class MediaBuyersService {
       teamGroups.get(team)!.push(mb);
     }
 
-    const results = [];
+    const results: any[] = [];
 
     for (const [teamName, mbs] of teamGroups.entries()) {
       const mbIds = mbs.map(mb => mb._id);
