@@ -177,11 +177,16 @@ export class AuthService {
   }
 
   async login(user: UserDocument) {
+    await this.usersService.update(user._id.toString(), { isOnline: true });
     const payload = { sub: user._id, role: user.role };
     return {
       success: true,
       access_token: this.jwtService.sign(payload),
     };
+  }
+
+  async logout(userId: string) {
+    await this.usersService.update(userId, { isOnline: false });
   }
 
   private generateOtp(): string {

@@ -33,6 +33,9 @@ export class User {
   @Prop({ default: false })
   isVerified: boolean;
 
+  @Prop({ default: false })
+  isOnline: boolean;
+
   @Prop()
   otp: string;
 

@@ -27,4 +27,10 @@ export class AnalyticsController {
     const userId = agentId || req.user._id;
     return this.analyticsService.getCsDashboard(userId);
   }
+
+  @Get('me')
+  @ApiOperation({ summary: 'Get role-based dashboard for the logged in user' })
+  getDashboardForMe(@Req() req: any) {
+    return this.analyticsService.getUserDashboard(req.user);
+  }
 }

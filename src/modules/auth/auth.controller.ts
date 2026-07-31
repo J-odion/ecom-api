@@ -1,9 +1,10 @@
-import { Controller, Post, Body, BadRequestException } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
+import { Controller, Post, Body, BadRequestException, UseGuards, Req } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { Public } from '../../common/decorators/public.decorator';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 
 @ApiTags('Authentication')
 @Controller('auth')
@@ -86,5 +87,15 @@ export class AuthController {
   async resetPassword(@Body() dto: { email: string; otp: string; newPass: string }) {
     if (!dto || !dto.email) throw new BadRequestException('Details are required.');
     return this.authService.resetPassword(dto.email, dto.otp, dto.newPass);
+  }
+
+  @Post('logout')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Log out and set online status to offline' })
+  @ApiResponse({ status: 200, description: 'Logged out successfully.' })
+  async logout(@Req() req: any) {
+    await this.authService.logout(req.user._id.toString());
+    return { success: true, message: 'Logged out successfully.' };
   }
 }

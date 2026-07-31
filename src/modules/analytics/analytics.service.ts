@@ -6,6 +6,10 @@ import { SpendLog, SpendLogDocument } from '../media-buyers/schemas/spend-log.sc
 import { Product, ProductDocument } from '../products/schemas/product.schema';
 import { Transaction, TransactionDocument, TransactionCategory, TransactionType } from '../finance/schemas/transaction.schema';
 import { Wallet, WalletDocument } from '../finance/schemas/wallet.schema';
+import { User, UserDocument } from '../users/schemas/user.schema';
+import { Lead, LeadDocument } from '../leads/schemas/lead.schema';
+import { Delivery, DeliveryDocument, DeliveryStatus } from '../logistics/schemas/delivery.schema';
+import { Role } from '../../common/enums/role.enum';
 
 @Injectable()
 export class AnalyticsService {
@@ -15,6 +19,9 @@ export class AnalyticsService {
     @InjectModel(Product.name) private productModel: Model<ProductDocument>,
     @InjectModel(Transaction.name) private transactionModel: Model<TransactionDocument>,
     @InjectModel(Wallet.name) private walletModel: Model<WalletDocument>,
+    @InjectModel(User.name) private userModel: Model<UserDocument>,
+    @InjectModel(Lead.name) private leadModel: Model<LeadDocument>,
+    @InjectModel(Delivery.name) private deliveryModel: Model<DeliveryDocument>,
   ) {}
 
   async getManagementDashboard() {
@@ -148,5 +155,224 @@ export class AnalyticsService {
         weeklyProcessed: weeklyProcessedCount
       }
     };
+  }
+
+  async getLogisticsDashboard(agentId: string) {
+    const deliveryAgentId = new Types.ObjectId(agentId);
+
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    const endOfToday = new Date();
+    endOfToday.setHours(23, 59, 59, 999);
+
+    const todayAssignedCount = await this.deliveryModel.countDocuments({
+      deliveryAgentId,
+      createdAt: { $gte: startOfToday, $lte: endOfToday }
+    });
+
+    const todayCompletedCount = await this.deliveryModel.countDocuments({
+      deliveryAgentId,
+      status: DeliveryStatus.COMPLETED,
+      updatedAt: { $gte: startOfToday, $lte: endOfToday }
+    });
+
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    sevenDaysAgo.setHours(0, 0, 0, 0);
+
+    const weeklyCompletedCount = await this.deliveryModel.countDocuments({
+      deliveryAgentId,
+      status: DeliveryStatus.COMPLETED,
+      updatedAt: { $gte: sevenDaysAgo }
+    });
+
+    const weeklyFailedCount = await this.deliveryModel.countDocuments({
+      deliveryAgentId,
+      status: DeliveryStatus.FAILED,
+      updatedAt: { $gte: sevenDaysAgo }
+    });
+
+    const totalWeekly = weeklyCompletedCount + weeklyFailedCount;
+    const deliveryRate = totalWeekly > 0 ? (weeklyCompletedCount / totalWeekly) * 100 : 0;
+
+    const wallet = await this.walletModel.findOne({ userId: deliveryAgentId });
+    let earnings = 0;
+    if (wallet) {
+      const creditTransactions = await this.transactionModel.find({
+        walletId: wallet._id,
+        type: TransactionType.CREDIT
+      }).exec();
+      earnings = creditTransactions.reduce((sum, tx) => sum + tx.amount, 0);
+    }
+
+    return {
+      todayAssigned: todayAssignedCount,
+      todayCompleted: todayCompletedCount,
+      weeklyCompleted: weeklyCompletedCount,
+      weeklyFailed: weeklyFailedCount,
+      deliveryRate: Number(deliveryRate.toFixed(2)),
+      earnings,
+    };
+  }
+
+  async getMediaBuyerDashboard(agentId: string) {
+    const mbId = new Types.ObjectId(agentId);
+
+    const logs = await this.spendLogModel.find({ mediaBuyerId: mbId }).exec();
+    const totalSpent = logs.reduce((sum, log) => sum + log.amountSpent, 0);
+    const totalReceived = logs.reduce((sum, log) => sum + log.amountReceived, 0);
+    const balance = totalReceived - totalSpent;
+
+    const leadsGenerated = await this.leadModel.countDocuments({ sourceMediaBuyerId: mbId });
+
+    const leadIds = await this.leadModel.find({ sourceMediaBuyerId: mbId }).select('_id').exec();
+    const leadIdArray = leadIds.map(l => l._id);
+
+    const scheduledOrders = await this.orderModel.countDocuments({
+      leadId: { $in: leadIdArray }
+    });
+
+    const deliveredOrders = await this.orderModel.countDocuments({
+      leadId: { $in: leadIdArray },
+      status: { $in: [OrderStatus.DELIVERED, OrderStatus.CASH_REMITTED] }
+    });
+
+    const deliveryRate = scheduledOrders > 0 ? (deliveredOrders / scheduledOrders) * 100 : 0;
+    const cpa = deliveredOrders > 0 ? totalSpent / deliveredOrders : 0;
+
+    const wallet = await this.walletModel.findOne({ userId: mbId });
+    let earnings = 0;
+    if (wallet) {
+      const commissionTransactions = await this.transactionModel.find({
+        walletId: wallet._id,
+        type: TransactionType.CREDIT,
+        category: TransactionCategory.COMMISSION
+      }).exec();
+      earnings = commissionTransactions.reduce((sum, tx) => sum + tx.amount, 0);
+    }
+
+    return {
+      totalSpent,
+      totalReceived,
+      balance,
+      leadsGenerated,
+      scheduledOrders,
+      deliveredOrders,
+      deliveryRate: Number(deliveryRate.toFixed(2)),
+      cpa: Number(cpa.toFixed(2)),
+      earnings
+    };
+  }
+
+  async getCsManagerDashboard() {
+    const csAgents = await this.userModel.find({ role: Role.CUSTOMER_SERVICE }).exec();
+    const team: any[] = [];
+    for (const agent of csAgents) {
+      const perf = await this.getCsDashboard(agent._id.toString());
+      team.push({
+        userId: agent._id,
+        fullName: agent.fullName,
+        email: agent.email,
+        team: agent.team,
+        isOnline: agent.isOnline,
+        isActive: agent.isActive,
+        ...perf
+      });
+    }
+    return {
+      role: Role.CUSTOMER_SERVICE_MANAGER,
+      team
+    };
+  }
+
+  async getLogisticsManagerDashboard() {
+    const logisticsAgents = await this.userModel.find({ role: Role.LOGISTICS }).exec();
+    const team: any[] = [];
+    for (const agent of logisticsAgents) {
+      const perf = await this.getLogisticsDashboard(agent._id.toString());
+      team.push({
+        userId: agent._id,
+        fullName: agent.fullName,
+        email: agent.email,
+        team: agent.team,
+        isOnline: agent.isOnline,
+        isActive: agent.isActive,
+        ...perf
+      });
+    }
+    return {
+      role: Role.LOGISTICS_MANAGER,
+      team
+    };
+  }
+
+  async getMarketingManagerDashboard() {
+    const mediaBuyers = await this.userModel.find({ role: Role.MEDIA_BUYER }).exec();
+    const team: any[] = [];
+    for (const buyer of mediaBuyers) {
+      const perf = await this.getMediaBuyerDashboard(buyer._id.toString());
+      team.push({
+        userId: buyer._id,
+        fullName: buyer.fullName,
+        email: buyer.email,
+        team: buyer.team,
+        isOnline: buyer.isOnline,
+        isActive: buyer.isActive,
+        ...perf
+      });
+    }
+    return {
+      role: Role.MARKETING_MANAGER,
+      team
+    };
+  }
+
+  async getUserDashboard(user: any) {
+    const role = user.role;
+    const userId = user._id.toString();
+
+    switch (role) {
+      case Role.CUSTOMER_SERVICE:
+        return {
+          role,
+          performance: await this.getCsDashboard(userId)
+        };
+      case Role.MEDIA_BUYER:
+        return {
+          role,
+          performance: await this.getMediaBuyerDashboard(userId)
+        };
+      case Role.LOGISTICS:
+        return {
+          role,
+          performance: await this.getLogisticsDashboard(userId)
+        };
+      case Role.CUSTOMER_SERVICE_MANAGER:
+        return this.getCsManagerDashboard();
+      case Role.LOGISTICS_MANAGER:
+        return this.getLogisticsManagerDashboard();
+      case Role.MARKETING_MANAGER:
+        return this.getMarketingManagerDashboard();
+      case Role.ADMIN:
+      case Role.MANAGER:
+        const managementMetrics = await this.getManagementDashboard();
+        const csTeam = await this.getCsManagerDashboard();
+        const logisticsTeam = await this.getLogisticsManagerDashboard();
+        const marketingTeam = await this.getMarketingManagerDashboard();
+        return {
+          role,
+          ...managementMetrics,
+          teams: {
+            customerService: csTeam.team,
+            logistics: logisticsTeam.team,
+            marketing: marketingTeam.team
+          }
+        };
+      default:
+        return {
+          role,
+          ...(await this.getManagementDashboard())
+        };
+    }
   }
 }
