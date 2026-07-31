@@ -122,6 +122,10 @@ export class AnalyticsService {
       earnings = commissionTransactions.reduce((sum, tx) => sum + tx.amount, 0);
     }
 
+    const userDoc = await this.userModel.findById(csId);
+    const salary = userDoc?.salary || 0;
+    earnings += salary;
+
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
     sevenDaysAgo.setHours(0, 0, 0, 0);
@@ -205,6 +209,10 @@ export class AnalyticsService {
       earnings = creditTransactions.reduce((sum, tx) => sum + tx.amount, 0);
     }
 
+    const userDoc = await this.userModel.findById(deliveryAgentId);
+    const salary = userDoc?.salary || 0;
+    earnings += salary;
+
     return {
       todayAssigned: todayAssignedCount,
       todayCompleted: todayCompletedCount,
@@ -250,6 +258,10 @@ export class AnalyticsService {
       }).exec();
       earnings = commissionTransactions.reduce((sum, tx) => sum + tx.amount, 0);
     }
+
+    const userDoc = await this.userModel.findById(mbId);
+    const salary = userDoc?.salary || 0;
+    earnings += salary;
 
     return {
       totalSpent,
@@ -359,9 +371,21 @@ export class AnalyticsService {
         const csTeam = await this.getCsManagerDashboard();
         const logisticsTeam = await this.getLogisticsManagerDashboard();
         const marketingTeam = await this.getMarketingManagerDashboard();
+
+        const onlineUsers = await this.userModel.find({ isOnline: true }).populate('locationId').exec();
+        const onlineUsersData = onlineUsers.map(u => ({
+          userId: u._id,
+          fullName: u.fullName,
+          email: u.email,
+          role: u.role,
+          locationName: (u.locationId as any)?.name || 'Remote / Unassigned',
+          team: u.team
+        }));
+
         return {
           role,
           ...managementMetrics,
+          onlineUsers: onlineUsersData,
           teams: {
             customerService: csTeam.team,
             logistics: logisticsTeam.team,

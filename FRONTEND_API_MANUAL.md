@@ -134,6 +134,19 @@ Endpoints for registering, logging in, verifying OTPs, and password recovery.
     }
     ```
 
+### Log Out
+*   **Method**: `POST`
+*   **Path**: `/auth/logout`
+*   **Auth**: Required (Any role)
+*   **Response (200)**:
+    ```json
+    {
+      "success": true,
+      "message": "Logged out successfully."
+    }
+    ```
+*   **Notes**: Automatically sets the user's online marker `isOnline` to `false`.
+
 ---
 
 ## 2. Users Module (`/users`)
@@ -171,6 +184,7 @@ Manage staff profiles, assign teams, switch roles, and toggle user activation st
         "role": "media_buyer",
         "team": "Team Alpha",
         "isActive": true,
+        "isOnline": false,
         "commissionRate": 10
       }
     ]
@@ -408,6 +422,104 @@ Exposes metrics customized for managers, CS agents, and Media Buyers.
       "metrics": {
         "weeklyDelivery": 8,
         "weeklyProcessed": 10
+      }
+    }
+    ```
+
+### Unified Personal/Team Dashboard (Any Role)
+*   **Method**: `GET`
+*   **Path**: `/analytics/me`
+*   **Auth**: Required (Any role)
+*   **Response (200)**: Responds with dynamic data structures matching the authenticated user's role:
+
+    #### CS Agent Profile (`customer_service`):
+    ```json
+    {
+      "role": "customer_service",
+      "performance": {
+        "todayDeliveries": 4,
+        "todayFollowUpOrders": 2,
+        "earnings": 450,
+        "rating": 80.00,
+        "metrics": {
+          "weeklyDelivery": 8,
+          "weeklyProcessed": 10
+        }
+      }
+    }
+    ```
+
+    #### Media Buyer Profile (`media_buyer`):
+    ```json
+    {
+      "role": "media_buyer",
+      "performance": {
+        "totalSpent": 1200,
+        "totalReceived": 1500,
+        "balance": 300,
+        "leadsGenerated": 85,
+        "scheduledOrders": 60,
+        "deliveredOrders": 45,
+        "deliveryRate": 75.00,
+        "cpa": 26.67,
+        "earnings": 150
+      }
+    }
+    ```
+
+    #### Logistics Agent Profile (`logistics`):
+    ```json
+    {
+      "role": "logistics",
+      "performance": {
+        "todayAssigned": 5,
+        "todayCompleted": 3,
+        "weeklyCompleted": 18,
+        "weeklyFailed": 2,
+        "deliveryRate": 90.00,
+        "earnings": 200
+      }
+    }
+    ```
+
+    #### Managers (`customer_service_manager`, `logistics_manager`, `marketing_manager`):
+    ```json
+    {
+      "role": "customer_service_manager", // or logistics_manager, marketing_manager
+      "team": [
+        {
+          "userId": "60c72b2f9b1d8a2c2c8b4567",
+          "fullName": "Agent Name",
+          "email": "agent@example.com",
+          "team": "Team Alpha",
+          "isOnline": true,
+          "isActive": true,
+          // ...plus the performance metrics listed above for that role
+        }
+      ]
+    }
+    ```
+
+    #### Admin / General Manager (`admin`, `manager`):
+    ```json
+    {
+      "role": "admin",
+      "revenue": 150000,
+      "adSpend": 32000,
+      "deliveryCost": 12000,
+      "commission": 15000,
+      "productCost": 40000,
+      "profit": 51000,
+      "metrics": {
+        "deliveryRate": 82.35,
+        "cpa": 45.5,
+        "totalOrders": 120,
+        "deliveredOrders": 90
+      },
+      "teams": {
+        "customerService": [ ...list of CS agents... ],
+        "logistics": [ ...list of logistics agents... ],
+        "marketing": [ ...list of media buyers... ]
       }
     }
     ```

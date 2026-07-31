@@ -21,6 +21,9 @@ The system is built as a set of modular, decoupled services connected via an **A
     - Double-entry ledger architecture via Immutable `Transaction` logs.
     - Separate `Wallets` for the System and individual Staff/Agents.
     - Automated payouts triggered by order completion and cash remittance.
+11. **Analytics & Dashboards Service**: 
+    - Unified dynamic dashboard endpoint for all roles.
+    - Real-time online/offline status tracking marker for all users.
 
 ### Cross-Service Event Flows
 
@@ -64,6 +67,11 @@ To keep the architecture scalable and decoupled, modules communicate via asynchr
 **Status: ✅ Completed**
 - Built `CommissionRulesService` for granular commission control.
 - Implemented `MediaBuyersService` for ad spend tracking and ROI analysis.
+
+### Sprint 6 – Unified Dashboards & Online Marker
+**Status: ✅ Completed**
+- Added user online status status tracking (`isOnline` field) updated automatically on login and logout (`POST /auth/logout`).
+- Built unified personal/team dashboard (`GET /analytics/me`) dynamically returning performance metrics tailored to the logged-in user's role (CS, Media Buyers, Logistics, respective managers, and admins).
 
 ## API Documentation (Swagger)
 

@@ -36,6 +36,9 @@ export class User {
   @Prop({ default: false })
   isOnline: boolean;
 
+  @Prop({ default: 0 })
+  salary: number;
+
   @Prop()
   otp: string;
 

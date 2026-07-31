@@ -14,7 +14,8 @@ export class UsersService {
   async create(dto: any) {
     this.logger.log(`Creating internal user record for: ${dto.email}`);
     try {
-      const hashed = await bcrypt.hash(dto.password, 10);
+      const rawPassword = dto.password || 'Welcome@123';
+      const hashed = await bcrypt.hash(rawPassword, 10);
 
       const userData: any = {
         ...dto,

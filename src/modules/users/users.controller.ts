@@ -32,8 +32,8 @@ export class UsersController {
   }
 
   @Get()
-  @Roles(Role.ADMIN, Role.MANAGER, Role.DEV)
-  @ApiOperation({ summary: 'List all staff users (Admin/Manager/Dev only)' })
+  @Roles(Role.ADMIN, Role.MANAGER, Role.DEV, Role.ACCOUNTANT)
+  @ApiOperation({ summary: 'List all staff users (Admin/Manager/Dev/Accountant only)' })
   findAll() {
     return this.usersService.findAll();
   }
@@ -45,8 +45,8 @@ export class UsersController {
   }
 
   @Patch(':id')
-  @Roles(Role.ADMIN, Role.DEV)
-  @ApiOperation({ summary: 'Update user role/location (Admin/Dev only)' })
+  @Roles(Role.ADMIN, Role.DEV, Role.ACCOUNTANT)
+  @ApiOperation({ summary: 'Update user details (Admin/Dev/Accountant only)' })
   update(@Param('id') id: string, @Body() dto: Partial<CreateUserDto>) {
     return this.usersService.update(id, dto);
   }
