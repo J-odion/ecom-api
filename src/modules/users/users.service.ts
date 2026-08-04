@@ -1,15 +1,22 @@
 import { Injectable, NotFoundException, Logger, BadRequestException } from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model, Types } from 'mongoose';
 import { UsersRepository } from './repositories/users.repository';
 import { CreateUserDto } from './dto/create-user.dto';
 import * as bcrypt from 'bcrypt';
 import { Role } from '../../common/enums/role.enum';
-import { Types } from 'mongoose';
+import { Wallet, WalletDocument } from '../finance/schemas/wallet.schema';
+import { Transaction, TransactionDocument } from '../finance/schemas/transaction.schema';
 
 @Injectable()
 export class UsersService {
   private readonly logger = new Logger(UsersService.name);
 
-  constructor(private readonly usersRepository: UsersRepository) {}
+  constructor(
+    private readonly usersRepository: UsersRepository,
+    @InjectModel(Wallet.name) private readonly walletModel: Model<WalletDocument>,
+    @InjectModel(Transaction.name) private readonly transactionModel: Model<TransactionDocument>,
+  ) {}
 
   async create(dto: any) {
     this.logger.log(`Creating internal user record for: ${dto.email}`);
@@ -48,7 +55,59 @@ export class UsersService {
 
   async findAll() {
     this.logger.log('Fetching all staff users.');
-    return this.usersRepository.findAll();
+    const users = await this.usersRepository.findAll();
+
+    const usersWithStats = await Promise.all(
+      users.map(async (user) => {
+        const userId = user._id;
+
+        // 1. Available/current commission from wallet balance
+        const wallet = await this.walletModel.findOne({ userId });
+        const currentCommission = wallet ? wallet.balance : 0;
+
+        // 2. Sum all CREDIT transactions of category COMMISSION for all-time commissions
+        let allTimeCommissions = 0;
+        if (wallet) {
+          const commissionTx = await this.transactionModel.find({
+            walletId: wallet._id,
+            type: 'CREDIT',
+            category: 'COMMISSION',
+          }).exec();
+          allTimeCommissions = commissionTx.reduce((sum, tx) => sum + tx.amount, 0);
+        }
+
+        // 3. Sum all CREDIT transactions of category PAYOUT (representing explicit payouts/salary)
+        let totalAllTimeSalaryEarned = 0;
+        if (wallet) {
+          const payoutTx = await this.transactionModel.find({
+            walletId: wallet._id,
+            type: 'CREDIT',
+            category: 'PAYOUT',
+          }).exec();
+          totalAllTimeSalaryEarned = payoutTx.reduce((sum, tx) => sum + tx.amount, 0);
+        }
+
+        // Fallback: estimate salary based on elapsed months since user creation if no explicit payouts
+        if (totalAllTimeSalaryEarned === 0 && user.salary) {
+          const createdAt = (user as any).createdAt || new Date();
+          const monthsElapsed = Math.max(
+            1,
+            Math.ceil((Date.now() - new Date(createdAt).getTime()) / (1000 * 60 * 60 * 24 * 30))
+          );
+          totalAllTimeSalaryEarned = user.salary * monthsElapsed;
+        }
+
+        const userObj = user.toObject ? user.toObject() : user;
+        return {
+          ...userObj,
+          currentCommission,
+          allTimeCommissions,
+          totalAllTimeSalaryEarned,
+        };
+      })
+    );
+
+    return usersWithStats;
   }
 
   async update(id: string, dto: any) {
@@ -70,6 +129,17 @@ export class UsersService {
     }
 
     this.logger.log(`User ID ${id} updated successfully.`);
+    return user;
+  }
+
+  async updateRole(id: string, role: Role) {
+    this.logger.log(`Updating role to ${role} for user ID: ${id}`);
+    const user = await this.usersRepository.update(id, { role });
+    if (!user) {
+      this.logger.warn(`Role update failed: User ID ${id} not found.`);
+      throw new NotFoundException('Could not update role because the account was not found.');
+    }
+    this.logger.log(`User ID ${id} role updated to ${role} successfully.`);
     return user;
   }
 

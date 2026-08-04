@@ -17,6 +17,8 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '../../common/enums/role.enum';
 
+import { UpdateRoleDto } from './dto/update-role.dto';
+
 @ApiTags('Users')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -49,6 +51,13 @@ export class UsersController {
   @ApiOperation({ summary: 'Update user details (Admin/Dev/Accountant only)' })
   update(@Param('id') id: string, @Body() dto: Partial<CreateUserDto>) {
     return this.usersService.update(id, dto);
+  }
+
+  @Patch(':id/role')
+  @Roles(Role.ADMIN, Role.MANAGER, Role.DEV)
+  @ApiOperation({ summary: 'Update staff role for promotion (Admin/Manager/Dev only)' })
+  updateRole(@Param('id') id: string, @Body() dto: UpdateRoleDto) {
+    return this.usersService.updateRole(id, dto.role);
   }
 
   @Patch(':id/toggle-status')

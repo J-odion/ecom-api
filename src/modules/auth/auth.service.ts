@@ -33,7 +33,7 @@ export class AuthService {
       const user = await this.usersService.create({
         ...dto,
         email: sanitizedEmail,
-        role: Role.CUSTOMER_SERVICE,
+        role: dto.role || Role.CUSTOMER_SERVICE,
         otp,
         otpExpiresAt,
         isVerified: false,
