@@ -16,8 +16,8 @@ export class AuditTrailInterceptor implements NestInterceptor {
     const request = context.switchToHttp().getRequest();
     const { method, url, body, ip, user } = request;
 
-    // Log write/update/delete operations
-    if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+    // Log all operations across all endpoints
+    if (['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
       // Create a sanitized body copy (excluding passwords/credentials)
       const sanitizedBody = { ...body };
       if (sanitizedBody.password) sanitizedBody.password = '********';

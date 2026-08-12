@@ -24,6 +24,7 @@ import { LocationsModule } from './modules/locations/locations.module';
 import { LeadFormsModule } from './modules/lead-forms/lead-forms.module';
 import { MailModule } from './modules/mail/mail.module';
 import { AuditTrailModule } from './modules/audit-trail/audit-trail.module';
+import { DeviceManagementModule } from './modules/device-management/device-management.module';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { AuditTrailInterceptor } from './common/interceptors/audit-trail.interceptor';
 
@@ -47,6 +48,7 @@ import { AuditTrailInterceptor } from './common/interceptors/audit-trail.interce
     LeadFormsModule,
     MailModule,
     AuditTrailModule,
+    DeviceManagementModule,
   ],
   controllers: [AppController],
   providers: [
