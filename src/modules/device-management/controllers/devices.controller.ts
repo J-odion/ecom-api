@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Body, Param, UseGuards, Req, Logger } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { DeviceService } from '../services/device.service';
 import { AssignmentService } from '../services/assignment.service';
 
