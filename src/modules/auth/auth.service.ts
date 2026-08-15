@@ -23,10 +23,11 @@ export class AuthService {
     
     const existingUser = await this.usersService.findByEmail(sanitizedEmail);
     if (existingUser) {
-      throw new ConflictException('This email address is already registered.');
+      throw new ConflictException('This email address is already registered. Please log in instead.');
     }
 
     const otp = this.generateOtp();
+    this.logger.log(`Generated OTP for ${sanitizedEmail}: ${otp}`);
     const otpExpiresAt = this.getOtpExpiry();
 
     try {
@@ -50,7 +51,7 @@ export class AuthService {
       };
     } catch (error) {
       this.logger.error(`Registration error for ${sanitizedEmail}: ${error.message}`);
-      throw new BadRequestException('Could not create account. Please check your details.');
+      throw new BadRequestException('We encountered an issue creating your account. Please check your details and try again.');
     }
   }
 
@@ -58,10 +59,11 @@ export class AuthService {
     const sanitizedEmail = email.toLowerCase().trim();
     const user = await this.usersService.findByEmail(sanitizedEmail);
     if (!user) {
-      throw new NotFoundException('Account not found.');
+      throw new NotFoundException('We could not find an account with that email address. Please register first.');
     }
 
     const otp = this.generateOtp();
+    this.logger.log(`Generated OTP for ${sanitizedEmail}: ${otp}`);
     const otpExpiresAt = this.getOtpExpiry();
 
     await this.usersService.update(user._id.toString(), {
@@ -81,7 +83,7 @@ export class AuthService {
 
     const user = await this.usersService.findByEmail(sanitizedEmail);
     if (!user) {
-      throw new BadRequestException('Verification failed. Account not found.');
+      throw new BadRequestException('Verification failed. We could not find an account with that email address.');
     }
 
     // Handle "Already Verified" case (prevents errors on double-click)
@@ -92,11 +94,11 @@ export class AuthService {
 
     if (user.otp !== sanitizedOtp) {
       this.logger.warn(`Failed verification attempt for ${sanitizedEmail}: Incorrect OTP.`);
-      throw new BadRequestException('The verification code is incorrect.');
+      throw new BadRequestException('The verification code you entered is incorrect. Please check the code and try again.');
     }
 
     if (new Date() > user.otpExpiresAt) {
-      throw new BadRequestException('This code has expired. Please request a new one.');
+      throw new BadRequestException('The verification code has expired. Please click "Resend Code" to get a new one.');
     }
 
     await this.usersService.update(user._id.toString(), {
@@ -113,10 +115,11 @@ export class AuthService {
     const sanitizedEmail = email.toLowerCase().trim();
     const user = await this.usersService.findByEmail(sanitizedEmail);
     if (!user) {
-      throw new NotFoundException('No account found with this email.');
+      throw new NotFoundException('We could not find an account associated with this email address.');
     }
 
     const otp = this.generateOtp();
+    this.logger.log(`Generated OTP for ${sanitizedEmail}: ${otp}`);
     const otpExpiresAt = this.getOtpExpiry();
 
     await this.usersService.update(user._id.toString(), {
@@ -134,15 +137,15 @@ export class AuthService {
 
     const user = await this.usersService.findByEmail(sanitizedEmail);
     if (!user) {
-      throw new BadRequestException('Account not found.');
+      throw new BadRequestException('We could not find an account associated with this email address.');
     }
 
     if (user.otp !== sanitizedOtp) {
-      throw new BadRequestException('Invalid reset code.');
+      throw new BadRequestException('The reset code you entered is incorrect. Please double-check and try again.');
     }
 
     if (new Date() > user.otpExpiresAt) {
-      throw new BadRequestException('Reset code has expired.');
+      throw new BadRequestException('The reset code has expired. Please request a new password reset link.');
     }
 
     // We pass the raw password; UsersService.update handles the hashing
@@ -161,16 +164,16 @@ export class AuthService {
     const user = await this.usersService.findByEmail(sanitizedEmail);
     
     if (!user) {
-      throw new UnauthorizedException('Incorrect email or password.');
+      throw new UnauthorizedException('The email or password you entered is incorrect. Please try again.');
     }
 
     if (!user.isVerified) {
-      throw new UnauthorizedException('Please verify your email before logging in.');
+      throw new UnauthorizedException('Your account is not verified yet. Please check your email for the verification code.');
     }
 
     const match = await bcrypt.compare(pass, user.password);
     if (!match) {
-      throw new UnauthorizedException('Incorrect email or password.');
+      throw new UnauthorizedException('The email or password you entered is incorrect. Please try again.');
     }
 
     return user;
