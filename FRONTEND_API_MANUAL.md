@@ -268,6 +268,8 @@ Handles progressive data capture, manual entry, duplicates detection, and status
     *   `status` (`NEW`, `CONTACTED`, `SCHEDULED`, `CANCELLED`, `PARTIAL`)
     *   `isDuplicate` (`true`/`false`)
     *   `isReturning` (`true`/`false`)
+    *   `startDate` (YYYY-MM-DD - filter by creation date)
+    *   `endDate` (YYYY-MM-DD - filter by creation date)
 *   **Auth**: Required (All except `Role.MEDIA_BUYER` are allowed)
 
 ### Get a Single Lead
@@ -329,6 +331,8 @@ Orchestrates inventory locks, shipment, payments, and follow-ups.
 *   **Path**: `/orders`
 *   **Query Parameters**:
     *   `logisticsId` (Filter orders assigned to a courier)
+    *   `startDate` (YYYY-MM-DD - filter by creation date)
+    *   `endDate` (YYYY-MM-DD - filter by creation date)
 *   **Auth**: Required (All except `Role.MEDIA_BUYER`)
 
 ### Get Single Order
@@ -541,7 +545,7 @@ Attribution spend recording and team metrics dashboard.
       "date": "2026-07-30T00:00:00.000Z",
       "amountSpent": 500,
       "amountReceived": 1200,
-      "productName": "Luxury Watch"
+      "product_name": "Luxury Watch"
     }
     ```
 
@@ -550,7 +554,8 @@ Attribution spend recording and team metrics dashboard.
 *   **Path**: `/media-buyers/performance`
 *   **Query Parameters**:
     *   `mediaBuyerId` (Required)
-    *   `range` (`daily`, `weekly`, `monthly` - defaults to `daily`)
+    *   `range` (`today`, `yesterday`, `last_week`, `last_month`, `custom` - defaults to `today`)
+    *   `date` (Required if `range` is `custom`, formatted as YYYY-MM-DD)
 *   **Auth**: Required (All roles)
 
 ### MB Team Dashboard
@@ -593,14 +598,44 @@ Forms settings and iframe capture tools.
       "submitButtonText": "Order Now",
       "successMessage": "Order received!",
       "showQuantityField": false,
-      "showAddressField": true
+      "showAddressField": true,
+      "branch": "Main Branch",
+      "priorityStates": ["Lagos", "Abuja"],
+      "headline": "Special Offer",
+      "subHeadline": "Limited Time Only",
+      "preSubmitText": "By clicking submit...",
+      "postSubmitText": "We will call you.",
+      "footerText": "© 2026",
+      "thankYouUrl": "https://example.com/thanks",
+      "customFields": [
+         { "id": "f1", "label": "Color", "placeholder": "Red", "required": true, "showLabel": true }
+      ],
+      "showPhoneCode": true,
+      "showWhatsappCode": false,
+      "bumpProduct": "60d1a...",
+      "bumpHeader": "Add a extra strap?",
+      "bumpBenefit": "Only $5",
+      "bumpScarcity": "Limited stock",
+      "bumpCheckbox": "Yes, add it",
+      "bumpBg": "#f1f1f1",
+      "bumpTextCol": "#000",
+      "upsellProduct": "60d1b...",
+      "upsellUrl": "https://example.com/upsell",
+      "upsellBtnText": "Claim Offer",
+      "upsellDecline": "No thanks",
+      "upsellScarcity": "Only 3 left",
+      "commitmentFee": 500,
+      "invoiceFooter": "Thank you for your business.",
+      "receiptFooter": "Keep this receipt.",
+      "notifyEmails": ["admin@example.com"]
     }
     ```
 
-### List Lead Forms (with dynamically calculated earnings)
+### List Lead Forms (with dynamically calculated earnings and counts)
 *   **Method**: `GET`
 *   **Path**: `/lead-forms`
 *   **Auth**: Required (All roles)
+*   **Response**: Each item includes `earnings`, `orderCount`, and `leadsCount` properties.
 
 ### Get Single Lead Form
 *   **Method**: `GET`
