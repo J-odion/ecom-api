@@ -37,6 +37,88 @@ export class LeadForm {
 
   @Prop({ default: true })
   showAddressField: boolean;
+
+  // --- New Form Builder Fields ---
+  @Prop()
+  branch: string;
+
+  @Prop({ type: [String] })
+  priorityStates: string[];
+
+  @Prop()
+  headline: string;
+
+  @Prop()
+  subHeadline: string;
+
+  @Prop()
+  preSubmitText: string;
+
+  @Prop()
+  postSubmitText: string;
+
+  @Prop()
+  footerText: string;
+
+  @Prop()
+  thankYouUrl: string;
+
+  @Prop({ type: [Object] })
+  customFields: any[];
+
+  @Prop({ default: false })
+  showPhoneCode: boolean;
+
+  @Prop({ default: false })
+  showWhatsappCode: boolean;
+
+  @Prop({ type: Types.ObjectId, ref: 'Product' })
+  bumpProduct: Types.ObjectId;
+
+  @Prop()
+  bumpHeader: string;
+
+  @Prop()
+  bumpBenefit: string;
+
+  @Prop()
+  bumpScarcity: string;
+
+  @Prop()
+  bumpCheckbox: string;
+
+  @Prop()
+  bumpBg: string;
+
+  @Prop()
+  bumpTextCol: string;
+
+  @Prop({ type: Types.ObjectId, ref: 'Product' })
+  upsellProduct: Types.ObjectId;
+
+  @Prop()
+  upsellUrl: string;
+
+  @Prop()
+  upsellBtnText: string;
+
+  @Prop()
+  upsellDecline: string;
+
+  @Prop()
+  upsellScarcity: string;
+
+  @Prop()
+  commitmentFee: number;
+
+  @Prop()
+  invoiceFooter: string;
+
+  @Prop()
+  receiptFooter: string;
+
+  @Prop({ type: [String] })
+  notifyEmails: string[];
 }
 
 export const LeadFormSchema = SchemaFactory.createForClass(LeadForm);

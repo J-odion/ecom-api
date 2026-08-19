@@ -113,8 +113,14 @@ export class OrdersService {
     return order;
   }
 
-  async findAll(logisticsId?: string): Promise<Order[]> {
-    const filter = logisticsId ? { logisticsId: new Types.ObjectId(logisticsId) } : {};
+  async findAll(logisticsId?: string, startDate?: string, endDate?: string): Promise<Order[]> {
+    const filter: any = {};
+    if (logisticsId) filter.logisticsId = new Types.ObjectId(logisticsId);
+    if (startDate || endDate) {
+      filter.createdAt = {};
+      if (startDate) filter.createdAt.$gte = new Date(startDate);
+      if (endDate) filter.createdAt.$lte = new Date(endDate);
+    }
     return this.orderModel.find(filter).exec();
   }
 

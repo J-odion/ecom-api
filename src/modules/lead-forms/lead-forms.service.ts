@@ -23,29 +23,39 @@ export class LeadFormsService {
       ...dto,
       productId: new Types.ObjectId(dto.productId),
       sourceMediaBuyerId: dto.sourceMediaBuyerId ? new Types.ObjectId(dto.sourceMediaBuyerId) : null,
+      bumpProduct: dto.bumpProduct ? new Types.ObjectId(dto.bumpProduct) : undefined,
+      upsellProduct: dto.upsellProduct ? new Types.ObjectId(dto.upsellProduct) : undefined,
     });
     return form.save();
   }
 
-  async calculateFormEarnings(formId: string): Promise<number> {
+  async calculateFormMetrics(formId: string): Promise<{ earnings: number, orderCount: number, leadsCount: number }> {
     const leads = await this.leadModel.find({ leadFormId: new Types.ObjectId(formId) }).select('_id').exec();
-    if (!leads || leads.length === 0) return 0;
+    if (!leads || leads.length === 0) return { earnings: 0, orderCount: 0, leadsCount: 0 };
     const leadIds = leads.map(l => l._id);
 
     const orders = await this.orderModel.find({
-      leadId: { $in: leadIds },
-      status: OrderStatus.CASH_REMITTED,
-    }).select('totalAmount').exec();
+      leadId: { $in: leadIds }
+    }).select('totalAmount status').exec();
 
-    return orders.reduce((sum, order) => sum + (order.totalAmount || 0), 0);
+    const orderCount = orders.length;
+    let earnings = 0;
+    
+    for (const o of orders) {
+       if (o.status === OrderStatus.CASH_REMITTED) {
+          earnings += (o.totalAmount || 0);
+       }
+    }
+
+    return { earnings, orderCount, leadsCount: leads.length };
   }
 
   async findAll() {
     const forms = await this.leadFormModel.find().populate('productId').populate('sourceMediaBuyerId').lean().exec();
     const results: any[] = [];
     for (const form of forms) {
-      const earnings = await this.calculateFormEarnings((form as any)._id.toString());
-      results.push({ ...form, earnings });
+      const metrics = await this.calculateFormMetrics((form as any)._id.toString());
+      results.push({ ...form, ...metrics });
     }
     return results;
   }
@@ -53,8 +63,8 @@ export class LeadFormsService {
   async findOne(id: string) {
     const form = await this.leadFormModel.findById(id).populate('productId').populate('sourceMediaBuyerId').lean().exec();
     if (!form) throw new NotFoundException('Lead form not found.');
-    const earnings = await this.calculateFormEarnings(id);
-    return { ...form, earnings };
+    const metrics = await this.calculateFormMetrics(id);
+    return { ...form, ...metrics };
   }
 
   async update(id: string, dto: Partial<CreateLeadFormDto>): Promise<LeadForm> {

@@ -35,8 +35,12 @@ export class OrdersController {
 
   @Get()
   @ApiOperation({ summary: 'Get all orders' })
-  findAll(@Query('logisticsId') logisticsId?: string) {
-    return this.ordersService.findAll(logisticsId);
+  findAll(
+    @Query('logisticsId') logisticsId?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    return this.ordersService.findAll(logisticsId, startDate, endDate);
   }
 
   @Get(':id')

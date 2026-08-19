@@ -32,8 +32,9 @@ export class MediaBuyersController {
   @ApiOperation({ summary: 'Fetch performance metrics' })
   getPerformanceMetrics(
     @Query('mediaBuyerId') mediaBuyerId: string,
-    @Query('range') range: 'daily' | 'weekly' | 'monthly',
+    @Query('range') range: 'today' | 'yesterday' | 'last_week' | 'last_month' | 'custom',
+    @Query('date') date?: string,
   ) {
-    return this.mediaBuyersService.getPerformanceMetrics(mediaBuyerId, range || 'daily');
+    return this.mediaBuyersService.getPerformanceMetrics(mediaBuyerId, range || 'today', date);
   }
 }

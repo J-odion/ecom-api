@@ -150,6 +150,11 @@ export class LeadsService {
     if (query.status) filter.status = query.status;
     if (query.isDuplicate === 'true') filter.isDuplicate = true;
     if (query.isReturning === 'true') filter.isReturning = true;
+    if (query.startDate || query.endDate) {
+      filter.createdAt = {};
+      if (query.startDate) filter.createdAt.$gte = new Date(query.startDate);
+      if (query.endDate) filter.createdAt.$lte = new Date(query.endDate);
+    }
 
     return this.leadModel.find(filter)
       .populate('productId')

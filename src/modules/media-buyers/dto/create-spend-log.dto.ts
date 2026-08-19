@@ -3,5 +3,5 @@ export class CreateSpendLogDto {
   date: string;
   amountSpent: number;
   amountReceived: number;
-  productName: string;
+  product_name: string;
 }

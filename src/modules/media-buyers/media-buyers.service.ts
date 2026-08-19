@@ -22,9 +22,11 @@ export class MediaBuyersService {
 
   async createSpendLog(createSpendLogDto: CreateSpendLogDto): Promise<SpendLog> {
     const balance = createSpendLogDto.amountReceived - createSpendLogDto.amountSpent;
+    const { product_name, ...rest } = createSpendLogDto as any;
     
     const spendLog = new this.spendLogModel({
-      ...createSpendLogDto,
+      ...rest,
+      productName: product_name,
       mediaBuyerId: new Types.ObjectId(createSpendLogDto.mediaBuyerId),
       date: new Date(createSpendLogDto.date),
       balance,
@@ -33,22 +35,65 @@ export class MediaBuyersService {
     return spendLog.save();
   }
 
-  async getPerformanceMetrics(mediaBuyerId: string, range: 'daily' | 'weekly' | 'monthly') {
+  async getPerformanceMetrics(mediaBuyerId: string, range: string, customDate?: string) {
     const mbId = new Types.ObjectId(mediaBuyerId);
     
+    let startDate: Date;
+    let endDate: Date;
+    const now = new Date();
+    
+    switch (range) {
+      case 'yesterday':
+        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+        endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        break;
+      case 'last_week':
+        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7);
+        endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+        break;
+      case 'last_month':
+        startDate = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+        endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+        break;
+      case 'custom':
+        if (customDate) {
+          startDate = new Date(customDate);
+          endDate = new Date(startDate);
+          endDate.setDate(endDate.getDate() + 1);
+        } else {
+          startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          endDate = new Date(startDate);
+          endDate.setDate(endDate.getDate() + 1);
+        }
+        break;
+      case 'today':
+      default:
+        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        endDate = new Date(startDate);
+        endDate.setDate(endDate.getDate() + 1);
+        break;
+    }
+
+    const dateFilter = { $gte: startDate, $lt: endDate };
+    
     // 1. Get Spend Logs
-    const logs = await this.spendLogModel.find({ mediaBuyerId: mbId }).exec();
+    const logs = await this.spendLogModel.find({ 
+      mediaBuyerId: mbId,
+      date: dateFilter
+    }).exec();
     const totalSpent = logs.reduce((sum, log) => sum + log.amountSpent, 0);
     const totalReceived = logs.reduce((sum, log) => sum + log.amountReceived, 0);
 
     // 2. Aggregate Leads
-    const leadsCount = await this.leadModel.countDocuments({ sourceMediaBuyerId: mbId });
+    const leads = await this.leadModel.find({ 
+      sourceMediaBuyerId: mbId,
+      createdAt: dateFilter 
+    }).select('_id').exec();
+    
+    const leadsCount = leads.length;
+    const leadIdArray = leads.map(l => l._id);
 
     // 3. Aggregate Orders originating from these Leads
-    // First, find all lead IDs for this media buyer
-    const leadIds = await this.leadModel.find({ sourceMediaBuyerId: mbId }).select('_id').exec();
-    const leadIdArray = leadIds.map(l => l._id);
-
     // Count scheduled orders (all orders originating from these leads)
     const scheduledOrdersCount = await this.orderModel.countDocuments({ 
       leadId: { $in: leadIdArray } 
