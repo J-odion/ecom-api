@@ -15,6 +15,8 @@ import { DeviceSyncWorker } from './services/device-sync.worker';
 
 import { DevicesController } from './controllers/devices.controller';
 
+import { UsersModule } from '../users/user.module';
+
 @Module({
   imports: [
     MongooseModule.forFeature([
@@ -23,6 +25,7 @@ import { DevicesController } from './controllers/devices.controller';
       { name: DeviceAction.name, schema: DeviceActionSchema },
     ]),
     ScheduleModule.forRoot(),
+    UsersModule,
   ],
   controllers: [DevicesController],
   providers: [

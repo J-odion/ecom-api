@@ -42,4 +42,5 @@ export interface DeviceProvider {
   
   getDeviceLocation(providerId: string): Promise<any>;
   getDeviceStatus(providerId: string): Promise<any>;
+  onboardDevice(providerId: string, userEmail: string): Promise<DeviceActionResponse>;
 }

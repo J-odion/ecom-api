@@ -89,11 +89,29 @@ export class FleetProvider implements DeviceProvider {
   }
 
   async getDeviceLocation(providerId: string): Promise<any> {
-    return { latitude: 0, longitude: 0 };
+    const data = await this.makeRequest(`hosts/${providerId}/location`);
+    if (!this.apiToken) {
+      return { latitude: 37.7749, longitude: -122.4194 }; // Mock SF
+    }
+    return data;
   }
 
   async getDeviceStatus(providerId: string): Promise<any> {
-    return { status: 'ONLINE' };
+    const data = await this.makeRequest(`hosts/${providerId}`);
+    if (!this.apiToken) {
+      return { status: 'ONLINE', lastSeen: new Date() };
+    }
+    return { status: data.host?.status, lastSeen: data.host?.seen_time };
+  }
+
+  async onboardDevice(providerId: string, userEmail: string): Promise<DeviceActionResponse> {
+    // In Fleet, you might assign the device to a user or update its MDM profile
+    const data = await this.makeRequest(`hosts/${providerId}/users`, 'POST', { email: userEmail });
+    if (!this.apiToken) {
+      this.logger.log(`Mock onboarded device ${providerId} for user ${userEmail}`);
+      return { success: true, message: 'Mock onboarding successful' };
+    }
+    return { success: true, details: data };
   }
 
   private mapHostToDevice(host: any): RemoteDevice {

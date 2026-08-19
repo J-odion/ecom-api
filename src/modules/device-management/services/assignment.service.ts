@@ -1,19 +1,27 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Inject } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { DeviceAssignment, DeviceAssignmentDocument, AssignmentStatus } from '../schemas/device-assignment.schema';
 import { Device, DeviceDocument } from '../schemas/device.schema';
+import { UsersService } from '../../users/users.service';
+import { DEVICE_PROVIDER } from '../providers/device-provider.interface';
+import type { DeviceProvider } from '../providers/device-provider.interface';
 
 @Injectable()
 export class AssignmentService {
   constructor(
     @InjectModel(DeviceAssignment.name) private assignmentModel: Model<DeviceAssignmentDocument>,
     @InjectModel(Device.name) private deviceModel: Model<DeviceDocument>,
+    private usersService: UsersService,
+    @Inject(DEVICE_PROVIDER) private deviceProvider: DeviceProvider,
   ) {}
 
   async assignDevice(deviceId: string, userId: string, assignedBy: string, reason?: string): Promise<DeviceAssignment> {
     const device = await this.deviceModel.findById(deviceId);
     if (!device) throw new NotFoundException('Device not found');
+
+    const user = await this.usersService.findOne(userId);
+    if (!user) throw new NotFoundException('User not found');
 
     // End previous active assignments for this device
     await this.assignmentModel.updateMany(
@@ -30,7 +38,17 @@ export class AssignmentService {
       assignedAt: new Date(),
     });
 
-    return assignment.save();
+    const savedAssignment = await assignment.save();
+
+    // Trigger Fleet onboarding
+    if (device.fleetHostId) {
+      await this.deviceProvider.onboardDevice(device.fleetHostId, user.email).catch(err => {
+         // We might want to log this but not fail the CRM assignment
+         console.error('Fleet onboarding failed:', err);
+      });
+    }
+
+    return savedAssignment;
   }
 
   async unassignDevice(deviceId: string, userId?: string): Promise<void> {

@@ -67,6 +67,18 @@ export class DevicesController {
     return this.deviceService.performAction(id, 'WIPE', req.user._id, body.reason);
   }
 
+  @Get(':id/location')
+  @ApiOperation({ summary: 'Get current device location from MDM provider' })
+  async getDeviceLocation(@Param('id') id: string) {
+    return this.deviceService.getDeviceLocation(id);
+  }
+
+  @Get(':id/status')
+  @ApiOperation({ summary: 'Get current device status from MDM provider' })
+  async getDeviceStatus(@Param('id') id: string) {
+    return this.deviceService.getDeviceStatus(id);
+  }
+
   @Post('sync')
   @ApiOperation({ summary: 'Manually trigger a sync with the MDM provider' })
   async triggerSync() {

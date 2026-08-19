@@ -181,7 +181,7 @@ export class AuthService {
 
   async login(user: UserDocument) {
     await this.usersService.update(user._id.toString(), { isOnline: true });
-    const payload = { sub: user._id, role: user.role };
+    const payload = { sub: user._id, role: user.role, email: user.email };
     return {
       success: true,
       access_token: this.jwtService.sign(payload),

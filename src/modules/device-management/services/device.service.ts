@@ -119,4 +119,20 @@ export class DeviceService {
       throw error;
     }
   }
+
+  async getDeviceLocation(id: string): Promise<any> {
+    const device = await this.findOne(id);
+    if (!device.fleetHostId) {
+      throw new Error('Device does not have a provider ID linked');
+    }
+    return this.deviceProvider.getDeviceLocation(device.fleetHostId);
+  }
+
+  async getDeviceStatus(id: string): Promise<any> {
+    const device = await this.findOne(id);
+    if (!device.fleetHostId) {
+      throw new Error('Device does not have a provider ID linked');
+    }
+    return this.deviceProvider.getDeviceStatus(device.fleetHostId);
+  }
 }
