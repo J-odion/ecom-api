@@ -1,6 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Role } from '../../../common/enums/role.enum';
 import { HydratedDocument, Types } from 'mongoose';
+import { UserStatus } from '../../access-control/enums/user-status.enum';
 
 export type UserDocument = HydratedDocument<User>;
 
@@ -16,7 +17,46 @@ export class User {
   password: string;
 
   @Prop({ type: String, enum: Role, default: Role.CUSTOMER_SERVICE })
-  role: Role;
+  legacyRole: Role;
+
+  @Prop({ type: Types.ObjectId, ref: 'Department', default: null })
+  department: Types.ObjectId | null;
+
+  @Prop({ type: Types.ObjectId, ref: 'Role', default: null })
+  role: Types.ObjectId | null;
+
+  @Prop({
+    type: [{
+      permissionKey: String,
+      granted: Boolean,
+      setBy: Types.ObjectId,
+      setAt: Date,
+      reason: String,
+    }],
+    default: [],
+  })
+  permissionOverrides: any[];
+
+  @Prop({ type: String, enum: UserStatus, default: UserStatus.ACTIVE })
+  status: UserStatus;
+
+  @Prop({ type: Date, default: null })
+  tokenValidAfter: Date | null;
+
+  @Prop({ type: Date, default: null })
+  statusEffectiveUntil: Date | null;
+
+  @Prop({
+    type: [{
+      status: String,
+      reason: String,
+      setBy: Types.ObjectId,
+      setAt: Date,
+      effectiveUntil: Date,
+    }],
+    default: [],
+  })
+  statusHistory: any[];
 
   @Prop({ type: Types.ObjectId, ref: 'Location' })
   locationId: Types.ObjectId; // The primary office/warehouse assigned to this staff
