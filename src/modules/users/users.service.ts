@@ -134,7 +134,7 @@ export class UsersService {
 
   async updateRole(id: string, role: Role) {
     this.logger.log(`Updating role to ${role} for user ID: ${id}`);
-    const user = await this.usersRepository.update(id, { role });
+    const user = await this.usersRepository.update(id, { legacyRole: role });
     if (!user) {
       this.logger.warn(`Role update failed: User ID ${id} not found.`);
       throw new NotFoundException('Could not update role because the account was not found.');

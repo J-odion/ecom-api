@@ -24,7 +24,7 @@ export class UsersRepository {
   }
 
   async findByRole(role: string) {
-    return this.userModel.find({ role, isActive: true }).populate('locationId').exec();
+    return this.userModel.find({ legacyRole: role, isActive: true }).populate('locationId').exec();
   }
 
   async findAll() {

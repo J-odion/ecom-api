@@ -34,7 +34,7 @@ export class AuthService {
       const user = await this.usersService.create({
         ...dto,
         email: sanitizedEmail,
-        role: dto.role || Role.CUSTOMER_SERVICE,
+        legacyRole: dto.role || Role.CUSTOMER_SERVICE,
         otp,
         otpExpiresAt,
         isVerified: false,
@@ -181,7 +181,7 @@ export class AuthService {
 
   async login(user: UserDocument) {
     await this.usersService.update(user._id.toString(), { isOnline: true });
-    const payload = { sub: user._id, role: user.role, email: user.email };
+    const payload = { sub: user._id, role: user.legacyRole, email: user.email };
     return {
       success: true,
       access_token: this.jwtService.sign(payload),

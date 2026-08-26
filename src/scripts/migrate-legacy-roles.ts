@@ -72,7 +72,7 @@ async function bootstrap() {
       } else {
         summary.push({
           legacyRole: user.legacyRole,
-          mappedDepartment: deptMap[user.legacyRole] ? deptMap[user.legacyRole].toString() : 'Global (null)',
+          mappedDepartment: deptMap[user.legacyRole]?.toString() ?? 'Global (null)',
           mappedRole: roleMap[user.legacyRole],
           userCount: 1,
         });
