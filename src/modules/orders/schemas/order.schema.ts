@@ -126,6 +126,34 @@ export class Order {
 
   @Prop({ type: Date, index: true })
   followUpDate?: Date;
+
+  // ─── Activity Timeline Tracking ──────────────────────────────────────────
+
+  /** The first staff member who opened this order detail */
+  @Prop({ type: Types.ObjectId, ref: 'User', default: null })
+  firstViewedBy?: Types.ObjectId;
+
+  @Prop({ type: Date })
+  firstViewedAt?: Date;
+
+  /** The first agent this order was assigned to */
+  @Prop({ type: Types.ObjectId, ref: 'User', default: null })
+  firstAssignedTo?: Types.ObjectId;
+
+  @Prop({ type: Date })
+  firstAssignedAt?: Date;
+
+  /** The last person to view this order */
+  @Prop({ type: Types.ObjectId, ref: 'User', default: null })
+  lastViewedBy?: Types.ObjectId;
+
+  /** Total number of times this order has been opened by any staff member */
+  @Prop({ default: 0 })
+  totalViews: number;
+
+  /** Timestamp of the last activity (any kind) on this order */
+  @Prop({ type: Date })
+  lastActivityAt?: Date;
 }
 
 export const OrderSchema = SchemaFactory.createForClass(Order);

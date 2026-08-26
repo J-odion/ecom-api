@@ -5,6 +5,8 @@ import { OrderForm, OrderFormDocument } from './schemas/order-form.schema';
 import { CreateOrderFormDto } from './dto/create-order-form.dto';
 import { ConfigService } from '@nestjs/config';
 import { Order, OrderDocument, OrderStatus } from '../orders/schemas/order.schema';
+import { OrderActivityService } from '../orders/order-activity.service';
+import { ActivityAction, ActivityCategory, ActivitySource } from '../orders/schemas/order-activity.schema';
 
 @Injectable()
 export class OrderFormsService {
@@ -14,6 +16,7 @@ export class OrderFormsService {
     @InjectModel(OrderForm.name) private OrderFormModel: Model<OrderFormDocument>,
     @InjectModel(Order.name) private orderModel: Model<OrderDocument>,
     private readonly configService: ConfigService,
+    private readonly activityService: OrderActivityService,
   ) {}
 
   async create(dto: CreateOrderFormDto): Promise<OrderForm> {
@@ -340,11 +343,9 @@ export class OrderFormsService {
     if (orderId) {
       const existing = await this.orderModel.findById(orderId).exec();
       if (existing) {
-        // Only update if it's currently abandoned. If it was already submitted (PENDING), don't revert.
         if (existing.status === OrderStatus.ABANDONED || status === OrderStatus.PENDING) {
            Object.assign(existing, orderData);
            await existing.save();
-           return { success: true, orderId: existing._id };
         }
         return { success: true, orderId: existing._id };
       }
@@ -352,6 +353,27 @@ export class OrderFormsService {
 
     const newOrder = new this.orderModel(orderData);
     await newOrder.save();
+
+    // Log form submission or cart abandonment activity
+    const isAbandoned = (status || OrderStatus.PENDING) === OrderStatus.ABANDONED;
+    await this.activityService.log({
+      orderId: newOrder._id.toString(),
+      actorId: null,
+      actorName: 'System',
+      category: isAbandoned ? ActivityCategory.STATUS : ActivityCategory.CREATED,
+      action: isAbandoned ? ActivityAction.CART_ABANDONED : ActivityAction.FORM_SUBMITTED,
+      description: isAbandoned
+        ? `Customer "${customerName || 'Unknown'}" started filling the form but did not submit — cart saved`
+        : `Customer "${customerName || 'Unknown'}" submitted the order form`,
+      newValue: isAbandoned ? OrderStatus.ABANDONED : OrderStatus.PENDING,
+      metadata: {
+        source: source || 'OTHER',
+        orderFormId: orderFormId || null,
+        phone: callNumber || whatsappNumber || null,
+      },
+      source: ActivitySource.WEBHOOK,
+    });
+
     return { success: true, orderId: newOrder._id };
   }
 }

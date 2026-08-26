@@ -1,11 +1,10 @@
-import { Controller, Post, Body, Patch, Param, Get, Query, UseGuards } from '@nestjs/common';
+import { Controller, Post, Body, Patch, Param, Get, Query, UseGuards, Req } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { OrdersService } from './orders.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { OrderStatus } from './schemas/order.schema';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
-
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '../../common/enums/role.enum';
 
@@ -29,8 +28,11 @@ export class OrdersController {
 
   @Post()
   @ApiOperation({ summary: 'Create a new order (Scheduled)' })
-  create(@Body() createOrderDto: CreateOrderDto) {
-    return this.ordersService.create(createOrderDto);
+  create(@Body() createOrderDto: CreateOrderDto, @Req() req: any) {
+    const actor = req.user
+      ? { id: req.user._id?.toString(), name: req.user.fullName || req.user.email }
+      : undefined;
+    return this.ordersService.create(createOrderDto, actor);
   }
 
   @Get()
@@ -44,9 +46,18 @@ export class OrdersController {
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Get an order by ID' })
-  findOne(@Param('id') id: string) {
-    return this.ordersService.findOne(id);
+  @ApiOperation({ summary: 'Get an order by ID — logs a VIEW activity' })
+  findOne(@Param('id') id: string, @Req() req: any) {
+    const actor = req.user
+      ? { id: req.user._id?.toString(), name: req.user.fullName || req.user.email }
+      : undefined;
+    return this.ordersService.findOne(id, actor);
+  }
+
+  @Get(':id/activity')
+  @ApiOperation({ summary: 'Get the full activity timeline for an order' })
+  getActivity(@Param('id') id: string) {
+    return this.ordersService.getActivity(id);
   }
 
   @Patch(':id/delivery-status')
@@ -54,8 +65,12 @@ export class OrdersController {
   updateDeliveryStatus(
     @Param('id') id: string,
     @Body() updateDto: { status: OrderStatus; deliveryFee?: number },
+    @Req() req: any,
   ) {
-    return this.ordersService.updateDeliveryStatus(id, updateDto.status, updateDto.deliveryFee);
+    const actor = req.user
+      ? { id: req.user._id?.toString(), name: req.user.fullName || req.user.email }
+      : undefined;
+    return this.ordersService.updateDeliveryStatus(id, updateDto.status, updateDto.deliveryFee, actor);
   }
 
   @Patch(':id/payment-status')
@@ -63,14 +78,21 @@ export class OrdersController {
   updatePaymentStatus(
     @Param('id') id: string,
     @Body() updateDto: { status: OrderStatus },
+    @Req() req: any,
   ) {
-    return this.ordersService.updatePaymentStatus(id, updateDto.status);
+    const actor = req.user
+      ? { id: req.user._id?.toString(), name: req.user.fullName || req.user.email }
+      : undefined;
+    return this.ordersService.updatePaymentStatus(id, updateDto.status, actor);
   }
 
   @Patch(':id/cancel')
   @ApiOperation({ summary: 'Cancel an order (RTS)' })
-  cancelOrder(@Param('id') id: string) {
-    return this.ordersService.cancelOrder(id);
+  cancelOrder(@Param('id') id: string, @Req() req: any) {
+    const actor = req.user
+      ? { id: req.user._id?.toString(), name: req.user.fullName || req.user.email }
+      : undefined;
+    return this.ordersService.cancelOrder(id, actor);
   }
 
   @Patch(':id/follow-up')
@@ -78,7 +100,11 @@ export class OrdersController {
   updateFollowUpDate(
     @Param('id') id: string,
     @Body() updateDto: { followUpDate: string; notes?: string },
+    @Req() req: any,
   ) {
-    return this.ordersService.updateFollowUp(id, new Date(updateDto.followUpDate), updateDto.notes);
+    const actor = req.user
+      ? { id: req.user._id?.toString(), name: req.user.fullName || req.user.email }
+      : undefined;
+    return this.ordersService.updateFollowUp(id, new Date(updateDto.followUpDate), updateDto.notes, actor);
   }
 }
