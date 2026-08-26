@@ -17,11 +17,10 @@ import { InventoryModule } from './modules/inventory/inventory.module';
 import { LogisticsModule } from './modules/logistics/logistics.module';
 import { ProductsModule } from './modules/products/products.module';
 import { CommissionRulesModule } from './modules/commission-rules/commission-rules.module';
-import { LeadsModule } from './modules/leads/leads.module';
 import { MediaBuyersModule } from './modules/media-buyers/media-buyers.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { LocationsModule } from './modules/locations/locations.module';
-import { LeadFormsModule } from './modules/lead-forms/lead-forms.module';
+import { OrderFormsModule } from './modules/order-forms/order-forms.module';
 import { MailModule } from './modules/mail/mail.module';
 import { AuditTrailModule } from './modules/audit-trail/audit-trail.module';
 import { DeviceManagementModule } from './modules/device-management/device-management.module';
@@ -43,11 +42,10 @@ import { AuditTrailInterceptor } from './common/interceptors/audit-trail.interce
     LogisticsModule,
     ProductsModule,
     CommissionRulesModule,
-    LeadsModule,
     MediaBuyersModule,
     AnalyticsModule,
     LocationsModule,
-    LeadFormsModule,
+    OrderFormsModule,
     MailModule,
     AuditTrailModule,
     DeviceManagementModule,

@@ -3,7 +3,6 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { SpendLog, SpendLogDocument } from './schemas/spend-log.schema';
 import { CreateSpendLogDto } from './dto/create-spend-log.dto';
-import { Lead, LeadDocument } from '../leads/schemas/lead.schema';
 import { Order, OrderDocument, OrderStatus } from '../orders/schemas/order.schema';
 import { User, UserDocument } from '../users/schemas/user.schema';
 import { Transaction, TransactionDocument, TransactionType, TransactionCategory } from '../finance/schemas/transaction.schema';
@@ -13,7 +12,6 @@ import { Wallet, WalletDocument } from '../finance/schemas/wallet.schema';
 export class MediaBuyersService {
   constructor(
     @InjectModel(SpendLog.name) private spendLogModel: Model<SpendLogDocument>,
-    @InjectModel(Lead.name) private leadModel: Model<LeadDocument>,
     @InjectModel(Order.name) private orderModel: Model<OrderDocument>,
     @InjectModel(User.name) private userModel: Model<UserDocument>,
     @InjectModel(Transaction.name) private transactionModel: Model<TransactionDocument>,
@@ -84,24 +82,24 @@ export class MediaBuyersService {
     const totalSpent = logs.reduce((sum, log) => sum + log.amountSpent, 0);
     const totalReceived = logs.reduce((sum, log) => sum + log.amountReceived, 0);
 
-    // 2. Aggregate Leads
-    const leads = await this.leadModel.find({ 
+    // 2. Aggregate Orders (previously leads)
+    const generatedOrders = await this.orderModel.find({ 
       sourceMediaBuyerId: mbId,
       createdAt: dateFilter 
-    }).select('_id').exec();
+    }).select('_id status').exec();
     
-    const leadsCount = leads.length;
-    const leadIdArray = leads.map(l => l._id);
+    const leadsGenerated = generatedOrders.length;
+    const orderIdArray = generatedOrders.map(o => o._id);
 
-    // 3. Aggregate Orders originating from these Leads
-    // Count scheduled orders (all orders originating from these leads)
+    // Count scheduled orders (orders originating from these leads/orders that are scheduled or beyond)
     const scheduledOrdersCount = await this.orderModel.countDocuments({ 
-      leadId: { $in: leadIdArray } 
+      _id: { $in: orderIdArray },
+      status: { $ne: OrderStatus.ABANDONED }
     });
 
     // Count delivered orders
     const deliveredOrdersCount = await this.orderModel.countDocuments({ 
-      leadId: { $in: leadIdArray },
+      _id: { $in: orderIdArray },
       status: { $in: [OrderStatus.DELIVERED, OrderStatus.CASH_REMITTED] }
     });
 
@@ -117,7 +115,7 @@ export class MediaBuyersService {
       totalSpent,
       totalReceived,
       balance: totalReceived - totalSpent,
-      leadsGenerated: leadsCount,
+      leadsGenerated, // technically Orders now, but kept key for frontend compatibility
       scheduledOrders: scheduledOrdersCount,
       deliveredOrders: deliveredOrdersCount,
       deliveryRate: Number(deliveryRate.toFixed(2)),
@@ -145,22 +143,20 @@ export class MediaBuyersService {
       const spendLogs = await this.spendLogModel.find({ mediaBuyerId: { $in: mbIds } }).exec();
       const spent = spendLogs.reduce((sum, log) => sum + log.amountSpent, 0);
 
-      const leads = await this.leadModel.find({ sourceMediaBuyerId: { $in: mbIds } }).select('_id').exec();
-      const leadIds = leads.map(l => l._id);
+      const generatedOrders = await this.orderModel.find({ sourceMediaBuyerId: { $in: mbIds } }).select('_id status totalAmount').exec();
+      const orderIds = generatedOrders.map(o => o._id);
 
-      const orderCounts = await this.orderModel.countDocuments({ leadId: { $in: leadIds } });
+      // Total orders generated (excluding abandoned ghost orders might be better, but count all for now)
+      const orderCounts = orderIds.length;
 
-      const deliveredOrdersCount = await this.orderModel.countDocuments({
-        leadId: { $in: leadIds },
-        status: { $in: [OrderStatus.DELIVERED, OrderStatus.CASH_REMITTED] },
-      });
+      const deliveredOrders = generatedOrders.filter(o => 
+        o.status === OrderStatus.DELIVERED || o.status === OrderStatus.CASH_REMITTED
+      );
+      const deliveredOrdersCount = deliveredOrders.length;
 
       const deliveryRate = orderCounts > 0 ? (deliveredOrdersCount / orderCounts) * 100 : 0;
 
-      const remittedOrders = await this.orderModel.find({
-        leadId: { $in: leadIds },
-        status: OrderStatus.CASH_REMITTED,
-      }).select('totalAmount').exec();
+      const remittedOrders = generatedOrders.filter(o => o.status === OrderStatus.CASH_REMITTED);
       const earnings = remittedOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
 
       const wallets = await this.walletModel.find({ userId: { $in: mbIds } }).exec();

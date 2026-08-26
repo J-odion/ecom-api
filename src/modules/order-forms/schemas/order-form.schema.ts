@@ -1,10 +1,10 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
 
-export type LeadFormDocument = HydratedDocument<LeadForm>;
+export type OrderFormDocument = HydratedDocument<OrderForm>;
 
 @Schema({ timestamps: true })
-export class LeadForm {
+export class OrderForm {
   @Prop({ required: true })
   title: string; // e.g. "Luxury Watch Facebook Campaign"
 
@@ -121,4 +121,4 @@ export class LeadForm {
   notifyEmails: string[];
 }
 
-export const LeadFormSchema = SchemaFactory.createForClass(LeadForm);
+export const OrderFormSchema = SchemaFactory.createForClass(OrderForm);

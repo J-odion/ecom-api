@@ -28,6 +28,17 @@ export class Product {
 
   @Prop({ required: true, default: 0 })
   reservedStock: number; // Stock held by pending orders
+
+  @Prop({
+    type: [{
+      name: { type: String, required: true },
+      price: { type: Number, required: true },
+      quantity: { type: Number, required: true },
+      isActive: { type: Boolean, default: true }
+    }],
+    default: []
+  })
+  offers: any[];
 }
 
 export const ProductSchema = SchemaFactory.createForClass(Product);

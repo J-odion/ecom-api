@@ -8,7 +8,6 @@ import { Product, ProductSchema } from '../products/schemas/product.schema';
 import { Transaction, TransactionSchema } from '../finance/schemas/transaction.schema';
 import { Wallet, WalletSchema } from '../finance/schemas/wallet.schema';
 import { User, UserSchema } from '../users/schemas/user.schema';
-import { Lead, LeadSchema } from '../leads/schemas/lead.schema';
 import { Delivery, DeliverySchema } from '../logistics/schemas/delivery.schema';
 
 @Module({
@@ -20,7 +19,6 @@ import { Delivery, DeliverySchema } from '../logistics/schemas/delivery.schema';
       { name: Transaction.name, schema: TransactionSchema },
       { name: Wallet.name, schema: WalletSchema },
       { name: User.name, schema: UserSchema },
-      { name: Lead.name, schema: LeadSchema },
       { name: Delivery.name, schema: DeliverySchema },
     ]),
   ],

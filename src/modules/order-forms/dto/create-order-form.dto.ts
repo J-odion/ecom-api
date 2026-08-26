@@ -1,7 +1,6 @@
-import { IsString, IsNotEmpty, IsOptional, IsBoolean, IsMongoId, IsEnum, IsArray, IsNumber } from 'class-validator';
-import { LeadSource } from '../../leads/schemas/lead.schema';
+import { IsString, IsNotEmpty, IsOptional, IsBoolean, IsMongoId, IsArray, IsNumber } from 'class-validator';
 
-export class CreateLeadFormDto {
+export class CreateOrderFormDto {
   @IsString()
   @IsNotEmpty({ message: 'Form title is required.' })
   title: string;
@@ -18,8 +17,8 @@ export class CreateLeadFormDto {
   sourceMediaBuyerId?: string;
 
   @IsOptional()
-  @IsEnum(LeadSource)
-  defaultSource?: LeadSource;
+  @IsString()
+  defaultSource?: string;
 
   @IsOptional()
   @IsString()

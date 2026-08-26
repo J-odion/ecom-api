@@ -7,7 +7,6 @@ import { Product, ProductDocument } from '../products/schemas/product.schema';
 import { Transaction, TransactionDocument, TransactionCategory, TransactionType } from '../finance/schemas/transaction.schema';
 import { Wallet, WalletDocument } from '../finance/schemas/wallet.schema';
 import { User, UserDocument } from '../users/schemas/user.schema';
-import { Lead, LeadDocument } from '../leads/schemas/lead.schema';
 import { Delivery, DeliveryDocument, DeliveryStatus } from '../logistics/schemas/delivery.schema';
 import { Role } from '../../common/enums/role.enum';
 
@@ -20,7 +19,6 @@ export class AnalyticsService {
     @InjectModel(Transaction.name) private transactionModel: Model<TransactionDocument>,
     @InjectModel(Wallet.name) private walletModel: Model<WalletDocument>,
     @InjectModel(User.name) private userModel: Model<UserDocument>,
-    @InjectModel(Lead.name) private leadModel: Model<LeadDocument>,
     @InjectModel(Delivery.name) private deliveryModel: Model<DeliveryDocument>,
   ) {}
 
@@ -231,17 +229,17 @@ export class AnalyticsService {
     const totalReceived = logs.reduce((sum, log) => sum + log.amountReceived, 0);
     const balance = totalReceived - totalSpent;
 
-    const leadsGenerated = await this.leadModel.countDocuments({ sourceMediaBuyerId: mbId });
-
-    const leadIds = await this.leadModel.find({ sourceMediaBuyerId: mbId }).select('_id').exec();
-    const leadIdArray = leadIds.map(l => l._id);
+    const generatedOrders = await this.orderModel.find({ sourceMediaBuyerId: mbId }).select('_id status').exec();
+    const leadsGenerated = generatedOrders.length;
+    const orderIdArray = generatedOrders.map(o => o._id);
 
     const scheduledOrders = await this.orderModel.countDocuments({
-      leadId: { $in: leadIdArray }
+      _id: { $in: orderIdArray },
+      status: { $ne: OrderStatus.ABANDONED }
     });
 
     const deliveredOrders = await this.orderModel.countDocuments({
-      leadId: { $in: leadIdArray },
+      _id: { $in: orderIdArray },
       status: { $in: [OrderStatus.DELIVERED, OrderStatus.CASH_REMITTED] }
     });
 

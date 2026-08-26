@@ -4,12 +4,31 @@ import { HydratedDocument, Types } from 'mongoose';
 export type OrderDocument = HydratedDocument<Order>;
 
 export enum OrderStatus {
+  PENDING = 'PENDING',
+  ABANDONED = 'ABANDONED',
   SCHEDULED = 'SCHEDULED',
   DELIVERED = 'DELIVERED',
   FAILED = 'FAILED',
   CASH_REMITTED = 'CASH_REMITTED',
   DISCREPANCY = 'DISCREPANCY',
-  CANCELLED = 'CANCELLED'
+  CANCELLED = 'CANCELLED',
+  DELETED = 'DELETED',
+  BANNED = 'BANNED'
+}
+
+export enum OrderSource {
+  FACEBOOK = 'FACEBOOK',
+  GOOGLE = 'GOOGLE',
+  TIKTOK = 'TIKTOK',
+  INSTAGRAM = 'INSTAGRAM',
+  DIRECT = 'DIRECT',
+  WHATSAPP = 'WHATSAPP',
+  OTHER = 'OTHER',
+}
+
+export enum OrderEntryType {
+  FORM = 'FORM',
+  MANUAL = 'MANUAL',
 }
 
 export enum DeliveryType {
@@ -40,6 +59,15 @@ export class Order {
   customerPhone: string;
 
   @Prop()
+  whatsappNumber: string;
+
+  @Prop()
+  callNumber: string;
+
+  @Prop()
+  customerEmail: string;
+
+  @Prop()
   customerAddress: string;
 
   @Prop({ type: Types.ObjectId, ref: 'User', index: true })
@@ -54,7 +82,7 @@ export class Order {
   @Prop({ required: true })
   totalAmount: number;
 
-  @Prop({ enum: OrderStatus, default: OrderStatus.SCHEDULED, index: true })
+  @Prop({ enum: OrderStatus, default: OrderStatus.PENDING, index: true })
   status: OrderStatus;
 
   @Prop({ enum: DeliveryType, default: DeliveryType.IN_HOUSE })
@@ -63,8 +91,29 @@ export class Order {
   @Prop({ default: 0 })
   deliveryFee: number;
   
-  @Prop({ type: Types.ObjectId, ref: 'Lead', index: true })
-  leadId: Types.ObjectId;
+  @Prop({ type: Types.ObjectId, ref: 'OrderForm', default: null, index: true })
+  orderFormId?: Types.ObjectId;
+
+  @Prop({ type: Types.ObjectId, ref: 'User', default: null })
+  sourceMediaBuyerId: Types.ObjectId;
+
+  @Prop({ enum: OrderSource, default: OrderSource.OTHER })
+  source: OrderSource;
+
+  @Prop({ enum: OrderEntryType, default: OrderEntryType.FORM })
+  entryType: OrderEntryType;
+
+  @Prop({ default: false })
+  isDuplicate: boolean;
+
+  @Prop({ default: false })
+  isReturning: boolean;
+
+  @Prop({ default: 1 })
+  submissionCount: number;
+
+  @Prop({ type: [{ type: Types.ObjectId, ref: 'Order' }] })
+  relatedOrderIds: Types.ObjectId[];
 
   @Prop({ type: Types.ObjectId, ref: 'Location' })
   fulfillmentLocationId: Types.ObjectId;

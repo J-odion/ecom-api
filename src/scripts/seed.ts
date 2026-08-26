@@ -47,8 +47,8 @@ async function seed() {
     { productId: wallet.insertedId, locationId: locLagos.insertedId, stock: 100, reservedStock: 0, createdAt: now },
   ]);
 
-  // 5. LEAD FORMS (EMBEDDABLE)
-  const watchForm = await connection.collection('leadforms').insertOne({
+  // 5. ORDER FORMS (EMBEDDABLE)
+  const watchForm = await connection.collection('orderforms').insertOne({
     title: 'Luxury Watch Campaign',
     description: 'Get 20% off today!',
     productId: watch.insertedId,
@@ -63,48 +63,43 @@ async function seed() {
     createdAt: now
   });
 
-  // 6. LEADS (IDENTITY SCENARIOS)
-  // Scenario A: Fresh Lead
-  const lead1 = await connection.collection('leads').insertOne({
+  // 6. ORDERS (Unified Leads & Orders Scenarios)
+  // Scenario A: Fresh PENDING Order (Previously a Lead)
+  const pendingOrder = await connection.collection('orders').insertOne({
     customerName: 'Alice Johnson', customerPhone: '08011122233', customerAddress: 'Lagos Island',
-    productId: watch.insertedId, quantity: 1, status: 'NEW', source: 'FACEBOOK', entryType: 'FORM',
-    assignedTo: cs1.insertedId, isDuplicate: false, isReturning: false, submissionCount: 1, createdAt: now
+    items: [{ productId: watch.insertedId, qty: 1, unitPrice: 45000 }], totalAmount: 45000,
+    status: 'PENDING', source: 'FACEBOOK', entryType: 'FORM', orderFormId: watchForm.insertedId,
+    agentId: cs1.insertedId, isDuplicate: false, isReturning: false, submissionCount: 1, createdAt: now
   });
 
-  // Scenario B: Abandoned/Partial Lead
-  const partialLead = await connection.collection('leads').insertOne({
+  // Scenario B: Abandoned Order (Cart Abandonment)
+  const abandonedOrder = await connection.collection('orders').insertOne({
     customerName: 'Bob Partial', customerPhone: '08044455566',
-    productId: wallet.insertedId, quantity: 1, status: 'PARTIAL', source: 'TIKTOK', entryType: 'FORM',
-    assignedTo: null, isDuplicate: false, isReturning: false, submissionCount: 1, createdAt: now
+    items: [{ productId: wallet.insertedId, qty: 1, unitPrice: 12000 }], totalAmount: 12000,
+    status: 'ABANDONED', source: 'TIKTOK', entryType: 'FORM', orderFormId: watchForm.insertedId,
+    agentId: null, isDuplicate: false, isReturning: false, submissionCount: 1, createdAt: now
   });
 
-  // Scenario C: Returning Customer (Has an existing order below)
-  const returningLead = await connection.collection('leads').insertOne({
+  // Scenario C: Returning Customer (Manual Entry, directly to Scheduled)
+  const scheduledOrder = await connection.collection('orders').insertOne({
     customerName: 'Charlie Return', customerPhone: '08077788899', customerAddress: 'Wuse Abuja',
-    productId: watch.insertedId, quantity: 1, status: 'NEW', source: 'DIRECT', entryType: 'MANUAL',
-    assignedTo: cs2.insertedId, isDuplicate: false, isReturning: true, submissionCount: 1, createdAt: now
+    items: [{ productId: watch.insertedId, qty: 1, unitPrice: 45000 }], totalAmount: 45000,
+    status: 'SCHEDULED', source: 'DIRECT', entryType: 'MANUAL', deliveryFee: 2000,
+    agentId: cs2.insertedId, isDuplicate: false, isReturning: true, submissionCount: 1,
+    fulfillmentLocationId: locAbuja.insertedId, createdAt: now
   });
 
-  // 7. ORDERS
-  // Order for the Returning Customer (Scenario C above)
-  const order1 = await connection.collection('orders').insertOne({
-    customerName: 'Charlie Return', customerPhone: '08077788899', customerAddress: 'Wuse Abuja',
+  // Scenario D: Delivered Order
+  const deliveredOrder = await connection.collection('orders').insertOne({
+    customerName: 'Diana Delivered', customerPhone: '08099900011', customerAddress: 'Wuse Abuja',
     agentId: cs2.insertedId, status: 'DELIVERED', totalAmount: 45000, deliveryFee: 2000,
     items: [{ productId: watch.insertedId, qty: 1, unitPrice: 45000 }],
     fulfillmentLocationId: locAbuja.insertedId, createdAt: new Date(Date.now() - 86400000)
   });
 
-  // New Active Order
-  const order2 = await connection.collection('orders').insertOne({
-    customerName: 'Alice Johnson', customerPhone: '08011122233', customerAddress: 'Lagos Island',
-    agentId: cs1.insertedId, status: 'SCHEDULED', totalAmount: 45000, deliveryFee: 1500,
-    items: [{ productId: watch.insertedId, qty: 1, unitPrice: 45000 }],
-    leadId: lead1.insertedId, fulfillmentLocationId: locLagos.insertedId, createdAt: now
-  });
-
   // 8. LOGISTICS (DELIVERIES)
   await connection.collection('deliveries').insertOne({
-    orderId: order2.insertedId, deliveryAgentId: rider.insertedId, status: 'ASSIGNED', createdAt: now
+    orderId: scheduledOrder.insertedId, deliveryAgentId: rider.insertedId, status: 'ASSIGNED', createdAt: now
   });
 
   // 9. COMMISSION RULES
@@ -116,11 +111,11 @@ async function seed() {
   const systemWallet = await connection.collection('wallets').insertOne({ type: 'SYSTEM', balance: 28000, createdAt: now });
   const csWallet = await connection.collection('wallets').insertOne({ userId: cs2.insertedId, type: 'STAFF', balance: 2000, createdAt: now });
 
-  // 11. TRANSACTIONS (Financial Trail for Order 1)
+  // 11. TRANSACTIONS (Financial Trail for Delivered Order)
   await connection.collection('transactions').insertMany([
-    { walletId: systemWallet.insertedId, amount: 45000, type: 'CREDIT', category: 'REVENUE', description: 'Revenue from Order 1', orderId: order1.insertedId, createdAt: now },
-    { walletId: systemWallet.insertedId, amount: 15000, type: 'DEBIT', category: 'COGS', description: 'Cost of Watch', orderId: order1.insertedId, createdAt: now },
-    { walletId: csWallet.insertedId, amount: 2000, type: 'CREDIT', category: 'COMMISSION', description: 'Commission for Order 1', orderId: order1.insertedId, createdAt: now },
+    { walletId: systemWallet.insertedId, amount: 45000, type: 'CREDIT', category: 'REVENUE', description: 'Revenue from Delivered Order', orderId: deliveredOrder.insertedId, createdAt: now },
+    { walletId: systemWallet.insertedId, amount: 15000, type: 'DEBIT', category: 'COGS', description: 'Cost of Watch', orderId: deliveredOrder.insertedId, createdAt: now },
+    { walletId: csWallet.insertedId, amount: 2000, type: 'CREDIT', category: 'COMMISSION', description: 'Commission for Delivered Order', orderId: deliveredOrder.insertedId, createdAt: now },
   ]);
 
   console.log('🏆 Database Seeded Successfully with Full Journey Data!');
