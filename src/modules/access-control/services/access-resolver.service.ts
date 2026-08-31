@@ -62,6 +62,12 @@ export class AccessResolverService {
       }
     }
 
+    // 1.5 Master Admin Bypass for Frontend
+    if (user.legacyRole === 'admin') {
+      effectivePermissions.add('*');
+      sourceMap['*'] = 'role';
+    }
+
     // 2. Role permissions
     if (user.role && user.role.permissions) {
       for (const perm of user.role.permissions) {

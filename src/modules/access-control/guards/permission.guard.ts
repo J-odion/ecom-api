@@ -23,6 +23,11 @@ export class PermissionGuard implements CanActivate {
     
     if (!user) return false;
 
+    // Admin has master access
+    if (user.role === 'admin' || user.legacyRole === 'admin') {
+      return true;
+    }
+
     // Stage 2 Dual-Check: check legacyRole first, then fallback to resolved
     // To implement the dual-check, we'd need to know what legacy roles map to what permissions, 
     // but the spec states: "PermissionGuard updated to pass if legacy role check OR new resolved check passes".
