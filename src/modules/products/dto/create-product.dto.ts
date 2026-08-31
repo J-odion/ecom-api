@@ -2,8 +2,12 @@ import { IsString, IsNotEmpty, IsOptional, IsNumber, Min } from 'class-validator
 
 export class CreateProductDto {
   @IsString()
-  @IsNotEmpty()
-  name: string;
+  @IsOptional()
+  name?: string;
+
+  @IsString()
+  @IsOptional()
+  productName?: string;
 
   @IsOptional()
   @IsString()
@@ -11,9 +15,27 @@ export class CreateProductDto {
 
   @IsNumber()
   @Min(0)
-  baseCost: number;
+  @IsOptional()
+  baseCost?: number;
 
   @IsNumber()
   @Min(0)
-  sellingPrice: number;
+  @IsOptional()
+  sellingPrice?: number;
+
+  @IsNumber()
+  @IsOptional()
+  stock?: number;
+
+  @IsNumber()
+  @IsOptional()
+  quantity?: number;
+
+  @IsNumber()
+  @IsOptional()
+  cost?: number;
+
+  @IsNumber()
+  @IsOptional()
+  price?: number;
 }

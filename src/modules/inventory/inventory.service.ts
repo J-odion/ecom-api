@@ -21,9 +21,23 @@ export class InventoryService {
   ) {}
 
   async createProduct(dto: CreateProductDto): Promise<Product> {
-    this.logger.log(`Adding new product to catalog: ${dto.name}`);
-    const product = new this.productModel(dto);
-    return product.save();
+    this.logger.log(`Adding new product to catalog: ${dto.name || dto.productName}`);
+    const payload = {
+      name: dto.name || dto.productName || 'Unnamed Product',
+      description: dto.description,
+      baseCost: dto.baseCost ?? dto.cost ?? 0,
+      sellingPrice: dto.sellingPrice ?? dto.price ?? 0,
+    };
+    const product = new this.productModel(payload);
+    const saved = await product.save();
+    
+    // Seed initial stock if provided
+    const initialStock = dto.stock ?? dto.quantity ?? 0;
+    if (initialStock > 0) {
+      // Find a default warehouse or system location, or just warn if we can't seed it
+      this.logger.warn(`Initial stock of ${initialStock} requested, but locationId is missing. Stock must be seeded via /inventory/in with a locationId.`);
+    }
+    return saved;
   }
 
   /**
@@ -139,10 +153,13 @@ export class InventoryService {
   }
 
   async transferStock(dto: TransferStockDto): Promise<boolean> {
-    this.logger.log(`Initiating stock transfer: ${dto.quantity} units from ${dto.fromLocationId} to ${dto.toLocationId}`);
+    const fromId = dto.fromLocationId || dto.from;
+    const toId = dto.toLocationId || dto.to;
+    
+    this.logger.log(`Initiating stock transfer: ${dto.quantity} units from ${fromId} to ${toId}`);
     const prodId = new Types.ObjectId(dto.productId);
-    const fromLocId = new Types.ObjectId(dto.fromLocationId);
-    const toLocId = new Types.ObjectId(dto.toLocationId);
+    const fromLocId = new Types.ObjectId(fromId);
+    const toLocId = new Types.ObjectId(toId);
 
     const sourceStock = await this.stockLevelModel.findOne({ productId: prodId, locationId: fromLocId });
     if (!sourceStock || (sourceStock.stock - sourceStock.reservedStock) < dto.quantity) {
@@ -166,7 +183,24 @@ export class InventoryService {
   }
 
   async findAll() {
-    return this.productModel.find().exec();
+    const products = await this.productModel.find().lean().exec();
+    
+    // Fetch all stock levels
+    const stockLevels = await this.stockLevelModel.find().lean().exec();
+    
+    // Group stock by productId
+    const stockMap = new Map<string, number>();
+    for (const sl of stockLevels) {
+      const pid = sl.productId.toString();
+      stockMap.set(pid, (stockMap.get(pid) || 0) + sl.stock);
+    }
+    
+    return products.map(p => ({
+      ...p,
+      stock: stockMap.get(p._id.toString()) || 0,
+      cost: p.baseCost,
+      price: p.sellingPrice,
+    }));
   }
 
   async getStockLevels(productId: string): Promise<StockLevel[]> {

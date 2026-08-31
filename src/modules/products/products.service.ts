@@ -11,13 +11,41 @@ export class ProductsService {
     @InjectModel(Product.name) private productModel: Model<ProductDocument>,
   ) {}
 
-  async create(createProductDto: CreateProductDto): Promise<Product> {
-    const createdProduct = new this.productModel(createProductDto);
+  async create(dto: CreateProductDto): Promise<Product> {
+    const payload = {
+      name: dto.name || dto.productName || 'Unnamed Product',
+      description: dto.description,
+      baseCost: dto.baseCost ?? dto.cost ?? 0,
+      sellingPrice: dto.sellingPrice ?? dto.price ?? 0,
+    };
+    const createdProduct = new this.productModel(payload);
     return createdProduct.save();
   }
 
-  async findAll(): Promise<Product[]> {
-    return this.productModel.find().exec();
+  async findAll() {
+    return this.productModel.aggregate([
+      {
+        $lookup: {
+          from: 'stocklevels', // Mongoose usually lowercase and pluralizes Collection names
+          localField: '_id',
+          foreignField: 'productId',
+          as: 'stockData'
+        }
+      },
+      {
+        $addFields: {
+          stock: { $sum: '$stockData.stock' },
+          cost: '$baseCost',
+          price: '$sellingPrice',
+          id: '$_id' // Map id for frontend
+        }
+      },
+      {
+        $project: {
+          stockData: 0 // Remove the raw stock data array from output
+        }
+      }
+    ]);
   }
 
   async findOne(id: string): Promise<Product> {

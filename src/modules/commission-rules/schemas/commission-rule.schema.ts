@@ -33,6 +33,9 @@ export class CommissionRule {
 
   @Prop({ default: true })
   isActive: boolean;
+
+  @Prop({ type: [String], default: [] })
+  roles: string[];
 }
 
 export const CommissionRuleSchema = SchemaFactory.createForClass(CommissionRule);

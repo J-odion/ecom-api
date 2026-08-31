@@ -23,6 +23,12 @@ export class DevicesController {
     return this.deviceService.findAll();
   }
 
+  @Post()
+  @ApiOperation({ summary: 'Create a new device manually' })
+  async createDevice(@Body() body: any) {
+    return this.deviceService.create(body);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get device details' })
   async getDevice(@Param('id') id: string) {

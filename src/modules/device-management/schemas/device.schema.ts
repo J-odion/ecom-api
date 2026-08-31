@@ -13,6 +13,16 @@ export enum DeviceStatus {
   PENDING_ENROLLMENT = 'PENDING_ENROLLMENT',
 }
 
+export enum DeviceType {
+  LAPTOP = 'LAPTOP',
+  MOBILE_PHONE = 'MOBILE_PHONE',
+  ROUTER = 'ROUTER',
+  CAR = 'CAR',
+  BIKE = 'BIKE',
+  HEADPHONES = 'HEADPHONES',
+  OTHER = 'OTHER',
+}
+
 @Schema({ timestamps: true })
 export class Device {
   @Prop({ required: false, type: Types.ObjectId, ref: 'Organization' })
@@ -33,8 +43,8 @@ export class Device {
   @Prop({ required: true })
   name: string;
 
-  @Prop({ required: true })
-  type: string;
+  @Prop({ required: true, enum: DeviceType, default: DeviceType.OTHER })
+  type: DeviceType;
 
   @Prop({ required: false })
   manufacturer?: string;
@@ -47,6 +57,12 @@ export class Device {
 
   @Prop({ required: false })
   osVersion?: string;
+  
+  @Prop({ required: false })
+  costPrice?: number;
+  
+  @Prop({ required: false })
+  purchaseDate?: Date;
 
   @Prop({ required: true, enum: DeviceStatus, default: DeviceStatus.PENDING_ENROLLMENT })
   status: DeviceStatus;

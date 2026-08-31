@@ -21,6 +21,14 @@ export class DeviceService {
     return this.deviceModel.find(filter).exec();
   }
 
+  async create(createData: any): Promise<DeviceDocument> {
+    const device = new this.deviceModel({
+      ...createData,
+      status: createData.status || DeviceStatus.PENDING_ENROLLMENT,
+    });
+    return device.save();
+  }
+
   async findOne(id: string): Promise<DeviceDocument> {
     const device = await this.deviceModel.findById(id).exec();
     if (!device) throw new NotFoundException('Device not found');
