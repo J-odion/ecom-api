@@ -2,6 +2,7 @@ export class CreateOrderDto {
   customerName: string;
   customerPhone: string;
   customerAddress?: string;
+  customerState?: string;
   agentId?: string;
   logisticsId?: string;
   items: { productId: string; qty: number; unitPrice: number }[];

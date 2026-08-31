@@ -30,4 +30,25 @@ export class FinanceController {
   getSystemRevenue() {
     return this.financeService.getSystemRevenue();
   }
+
+  @Get('cash-flow')
+  @Roles(Role.ADMIN, Role.ACCOUNTANT)
+  @ApiOperation({ summary: 'Get cash flow summary (inflow vs outflow)' })
+  getCashFlow(@Req() req: any) {
+    return this.financeService.getCashFlow(req.query);
+  }
+
+  @Get('bank-inflow')
+  @Roles(Role.ADMIN, Role.ACCOUNTANT)
+  @ApiOperation({ summary: 'Get bank inflows (revenue)' })
+  getBankInflow(@Req() req: any) {
+    return this.financeService.getBankInflow(req.query);
+  }
+
+  @Get('expense')
+  @Roles(Role.ADMIN, Role.ACCOUNTANT)
+  @ApiOperation({ summary: 'Get expenses (cogs, logistics, payouts, commissions)' })
+  getExpense(@Req() req: any) {
+    return this.financeService.getExpense(req.query);
+  }
 }

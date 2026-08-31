@@ -21,6 +21,15 @@ export class Transaction {
   @Prop({ type: Types.ObjectId, ref: 'Order' })
   orderId: Types.ObjectId;
 
+  @Prop({ type: Types.ObjectId, ref: 'Product' })
+  productId: Types.ObjectId;
+
+  @Prop({ type: Types.ObjectId, ref: 'Location' })
+  officeId: Types.ObjectId;
+
+  @Prop({ index: true })
+  state: string;
+
   @Prop({ type: Types.ObjectId, ref: 'Wallet', required: true })
   walletId: Types.ObjectId;
 

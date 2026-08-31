@@ -93,4 +93,29 @@ export class AccountingController {
   async closeAccountingPeriod(@Param('id') id: string) {
     return this.accountingService.closeAccountingPeriod(id);
   }
+
+  // ======================
+  // REPORTS
+  // ======================
+
+  @Get('reports/income-statement')
+  @Roles(Role.ADMIN, Role.ACCOUNTANT, Role.MANAGER)
+  @ApiOperation({ summary: 'Generate Income Statement' })
+  async getIncomeStatement(@Query() query: any) {
+    return this.accountingService.getIncomeStatement(query);
+  }
+
+  @Get('reports/balance-sheet')
+  @Roles(Role.ADMIN, Role.ACCOUNTANT, Role.MANAGER)
+  @ApiOperation({ summary: 'Generate Balance Sheet' })
+  async getBalanceSheet(@Query() query: any) {
+    return this.accountingService.getBalanceSheet(query);
+  }
+
+  @Get('reports/cash-flow-statement')
+  @Roles(Role.ADMIN, Role.ACCOUNTANT, Role.MANAGER)
+  @ApiOperation({ summary: 'Generate Cash Flow Statement' })
+  async getCashFlowStatement(@Query() query: any) {
+    return this.accountingService.getCashFlowStatement(query);
+  }
 }

@@ -11,6 +11,12 @@ export class Location {
   @Prop()
   address: string;
 
+  @Prop()
+  state: string;
+
+  @Prop({ default: 'OFFICE' })
+  type: string;
+
   @Prop({ default: true })
   isActive: boolean;
 }

@@ -20,6 +20,12 @@ export class JournalLine {
 
   @Prop({ type: Types.ObjectId, ref: 'Location' })
   locationId?: Types.ObjectId;
+
+  @Prop({ type: Types.ObjectId, ref: 'Product' })
+  productId?: Types.ObjectId;
+
+  @Prop()
+  state?: string;
 }
 
 export const JournalLineSchema = SchemaFactory.createForClass(JournalLine);

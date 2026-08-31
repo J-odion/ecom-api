@@ -155,6 +155,10 @@ export class OrderFormsService {
       </div>
       ${addressField ? `
       <div class="field">
+        <label for="customerState">State</label>
+        <input type="text" id="customerState" name="customerState" placeholder="e.g. Lagos" />
+      </div>
+      <div class="field">
         <label for="customerAddress">Delivery Address</label>
         <input type="text" id="customerAddress" name="customerAddress" placeholder="e.g. 12 Street, Lagos" />
       </div>` : ''}
@@ -211,6 +215,7 @@ export class OrderFormsService {
         callNumber: document.getElementById('callNumber').value.trim().replace(/\\s/g,'') || undefined,
         whatsappNumber: document.getElementById('whatsappNumber').value.trim().replace(/\\s/g,'') || undefined,
         customerEmail: document.getElementById('customerEmail').value.trim() || undefined,
+        customerState: document.getElementById('customerState')?.value.trim() || undefined,
         customerAddress: document.getElementById('customerAddress')?.value.trim() || undefined,
         productId: document.getElementById('productId').value,
         quantity: ${quantityField ? 'parseInt(document.getElementById("quantity").value)' : '1'},
@@ -309,7 +314,7 @@ export class OrderFormsService {
   async processWebhook(payload: any) {
     const {
       customerName, callNumber, whatsappNumber, customerEmail,
-      customerAddress, productId, quantity, sourceMediaBuyerId,
+      customerState, customerAddress, productId, quantity, sourceMediaBuyerId,
       source, orderFormId, status, orderId
     } = payload;
 
@@ -329,6 +334,7 @@ export class OrderFormsService {
       callNumber: callNumber || '',
       whatsappNumber,
       customerEmail,
+      customerState,
       customerAddress,
       customerPhone: callNumber || whatsappNumber || 'Unknown', // legacy field fallback
       items,

@@ -28,43 +28,68 @@ export class FinanceService {
     this.logger.log(`Processing financial settlement for Order ${orderDoc._id}`);
     
     try {
-      // 1. Record Revenue to System Wallet (CREDIT)
-      await this.recordTransaction({
-        userId: null,
-        type: TransactionType.CREDIT,
-        category: TransactionCategory.REVENUE,
-        amount: orderDoc.totalAmount,
-        description: `Revenue from Order ${orderDoc._id}`,
-        orderId: orderDoc._id as Types.ObjectId,
-      });
+      const state = orderDoc.customerState;
+      const officeId = orderDoc.fulfillmentLocationId;
 
-      // 2. Pay Commission to CS Agent (Sum of commissions for each item)
-      if (orderDoc.agentId) {
-        let totalCommission = 0;
-        for (const item of orderDoc.items) {
-          const itemTotal = (orderDoc.totalAmount / orderDoc.items.reduce((sum, i) => sum + i.qty, 0)) * item.qty;
+      // Iterate through items to record Revenue, COGS, and Commissions PER PRODUCT
+      for (const item of orderDoc.items) {
+        const itemRevenue = (orderDoc.totalAmount / orderDoc.items.reduce((sum, i) => sum + i.qty, 0)) * item.qty;
+
+        // 1. Record Revenue to System Wallet (CREDIT) - Per Product
+        await this.recordTransaction({
+          userId: null,
+          type: TransactionType.CREDIT,
+          category: TransactionCategory.REVENUE,
+          amount: itemRevenue,
+          description: `Revenue from Order ${orderDoc._id} (Item: ${item.productId})`,
+          orderId: orderDoc._id as Types.ObjectId,
+          productId: item.productId,
+          state,
+          officeId,
+        });
+
+        // 2. Pay Commission to CS Agent
+        if (orderDoc.agentId) {
           const commission = await this.commissionRulesService.calculateCommission(
             item.productId.toString(), 
             item.qty, 
-            itemTotal
+            itemRevenue
           );
-          totalCommission += commission;
+
+          if (commission > 0) {
+            await this.recordTransaction({
+              userId: orderDoc.agentId,
+              type: TransactionType.CREDIT,
+              category: TransactionCategory.COMMISSION,
+              amount: commission,
+              description: `Commission for Order ${orderDoc._id} (Item: ${item.productId})`,
+              orderId: orderDoc._id as Types.ObjectId,
+              productId: item.productId,
+              state,
+              officeId,
+            });
+          }
         }
 
-        if (totalCommission > 0) {
+        // 3. Record Product Cost (COGS) as a Debit to System
+        const product = await this.productModel.findById(item.productId);
+        if (product && product.baseCost > 0) {
+          const itemCogs = product.baseCost * item.qty;
           await this.recordTransaction({
-            userId: orderDoc.agentId,
-            type: TransactionType.CREDIT,
-            category: TransactionCategory.COMMISSION,
-            amount: totalCommission,
-            description: `Commission for Order ${orderDoc._id}`,
+            userId: null,
+            type: TransactionType.DEBIT,
+            category: TransactionCategory.COGS,
+            amount: itemCogs,
+            description: `Product Cost (COGS) for Order ${orderDoc._id} (Item: ${item.productId})`,
             orderId: orderDoc._id as Types.ObjectId,
+            productId: item.productId,
+            state,
+            officeId,
           });
-          this.logger.log(`Total Commission of ${totalCommission} awarded to Agent ${orderDoc.agentId}`);
         }
       }
 
-      // 2.5 Pay Commission to Media Buyer if order has a sourceMediaBuyerId
+      // 4. Pay Commission to Media Buyer (Overall, not per product currently as MB is based on total)
       if (orderDoc.sourceMediaBuyerId) {
         try {
           const mb = await this.usersService.findOne(orderDoc.sourceMediaBuyerId.toString());
@@ -79,8 +104,9 @@ export class FinanceService {
                 amount: mbCommission,
                 description: `Media Buyer Commission for Order ${orderDoc._id}`,
                 orderId: orderDoc._id as Types.ObjectId,
+                state,
+                officeId,
               });
-              this.logger.log(`Media Buyer Commission of ${mbCommission} awarded to Media Buyer ${orderDoc.sourceMediaBuyerId}`);
             }
           }
         } catch (e) {
@@ -88,28 +114,7 @@ export class FinanceService {
         }
       }
 
-      // 3. Record Product Cost (COGS) as a Debit to System
-      let totalCogs = 0;
-      for (const item of orderDoc.items) {
-        const product = await this.productModel.findById(item.productId);
-        if (product) {
-          totalCogs += (product.baseCost * item.qty);
-        }
-      }
-
-      if (totalCogs > 0) {
-        await this.recordTransaction({
-          userId: null,
-          type: TransactionType.DEBIT,
-          category: TransactionCategory.COGS,
-          amount: totalCogs,
-          description: `Product Cost (COGS) for Order ${orderDoc._id}`,
-          orderId: orderDoc._id as Types.ObjectId,
-        });
-        this.logger.log(`COGS of ${totalCogs} debited for Order ${orderDoc._id}`);
-      }
-
-      // 4. Record Delivery Fee as a Debit to System
+      // 5. Record Delivery Fee as a Debit to System (Overall)
       if (orderDoc.deliveryFee > 0) {
         await this.recordTransaction({
           userId: null,
@@ -118,6 +123,8 @@ export class FinanceService {
           amount: orderDoc.deliveryFee,
           description: `Logistics/Delivery Fee for Order ${orderDoc._id}`,
           orderId: orderDoc._id as Types.ObjectId,
+          state,
+          officeId,
         });
         this.logger.log(`Delivery fee of ${orderDoc.deliveryFee} debited for Order ${orderDoc._id}`);
       }
@@ -176,5 +183,133 @@ export class FinanceService {
   async getTransactions(userId?: string): Promise<Transaction[]> {
     const wallet = await this.getOrCreateWallet(userId ? new Types.ObjectId(userId) : null);
     return this.transactionModel.find({ walletId: wallet._id }).sort({ createdAt: -1 }).exec();
+  }
+
+  private buildFilterQuery(query: any) {
+    const match: any = {};
+    
+    if (query.state) {
+      match.state = query.state;
+    }
+    if (query.officeId) {
+      match.officeId = new Types.ObjectId(query.officeId);
+    }
+    if (query.productId) {
+      match.productId = new Types.ObjectId(query.productId);
+    }
+    
+    if (query.date) {
+      const now = new Date();
+      let startDate = new Date();
+      let endDate = new Date();
+      
+      switch (query.date) {
+        case 'this_week':
+          startDate.setDate(now.getDate() - now.getDay());
+          break;
+        case 'last_week':
+          startDate.setDate(now.getDate() - now.getDay() - 7);
+          endDate.setDate(now.getDate() - now.getDay() - 1);
+          break;
+        case 'this_month':
+          startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+          break;
+        case 'last_month':
+          startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+          endDate = new Date(now.getFullYear(), now.getMonth(), 0);
+          break;
+        default:
+          if (query.startDate && query.endDate) {
+            startDate = new Date(query.startDate);
+            endDate = new Date(query.endDate);
+          }
+      }
+      match.createdAt = { $gte: startDate, $lte: endDate };
+    }
+    
+    return match;
+  }
+
+  async getCashFlow(query: any) {
+    const match = this.buildFilterQuery(query);
+    
+    const aggregation = await this.transactionModel.aggregate([
+      { $match: match },
+      {
+        $group: {
+          _id: '$type',
+          total: { $sum: '$amount' }
+        }
+      }
+    ]);
+    
+    let inflow = 0;
+    let outflow = 0;
+    
+    aggregation.forEach(item => {
+      if (item._id === TransactionType.CREDIT) inflow = item.total;
+      if (item._id === TransactionType.DEBIT) outflow = item.total;
+    });
+    
+    return {
+      inflow,
+      outflow,
+      net: inflow - outflow
+    };
+  }
+
+  async getBankInflow(query: any) {
+    const match = this.buildFilterQuery(query);
+    match.category = TransactionCategory.REVENUE;
+    
+    const aggregation = await this.transactionModel.aggregate([
+      { $match: match },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: '$amount' }
+        }
+      }
+    ]);
+    
+    return {
+      inflow: aggregation.length > 0 ? aggregation[0].total : 0
+    };
+  }
+
+  async getExpense(query: any) {
+    const match = this.buildFilterQuery(query);
+    match.category = { $in: [TransactionCategory.COGS, TransactionCategory.LOGISTICS, TransactionCategory.COMMISSION, TransactionCategory.PAYOUT] };
+    match.type = TransactionType.DEBIT; // Note: Commissions are currently CREDITS to user wallets, but DEBITS to system? Wait, the recordTransaction does NOT explicitly create double entries. It creates ONE transaction tied to a wallet. If it's a CREDIT to an agent's wallet, it's an expense for the system.
+    
+    // To properly calculate expenses from the system's perspective, we should look at ALL COGS, LOGISTICS (which are DEBITs on System wallet), and COMMISSIONS/PAYOUTS (which are CREDITs on user wallets).
+    
+    // Actually, a better approach for expenses is just matching categories:
+    const expenseMatch = {
+      ...this.buildFilterQuery(query),
+      category: { $in: [TransactionCategory.COGS, TransactionCategory.LOGISTICS, TransactionCategory.COMMISSION, TransactionCategory.PAYOUT] }
+    };
+    
+    const aggregation = await this.transactionModel.aggregate([
+      { $match: expenseMatch },
+      {
+        $group: {
+          _id: '$category',
+          total: { $sum: '$amount' }
+        }
+      }
+    ]);
+    
+    const expenses = {
+      total: 0,
+      breakdown: {}
+    };
+    
+    aggregation.forEach(item => {
+      expenses.breakdown[item._id] = item.total;
+      expenses.total += item.total;
+    });
+    
+    return expenses;
   }
 }

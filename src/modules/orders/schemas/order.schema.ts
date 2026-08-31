@@ -70,6 +70,9 @@ export class Order {
   @Prop()
   customerAddress: string;
 
+  @Prop({ index: true })
+  customerState: string;
+
   @Prop({ type: Types.ObjectId, ref: 'User', index: true })
   agentId: Types.ObjectId;
 

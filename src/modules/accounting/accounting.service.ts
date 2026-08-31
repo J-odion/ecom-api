@@ -153,4 +153,152 @@ export class AccountingService {
     period.status = 'CLOSED';
     return period.save();
   }
+
+  // ======================
+  // REPORTS
+  // ======================
+
+  private buildFilterQuery(query: any) {
+    const match: any = { status: 'POSTED' };
+    
+    if (query.date) {
+      const now = new Date();
+      let startDate = new Date();
+      let endDate = new Date();
+      
+      switch (query.date) {
+        case 'this_week':
+          startDate.setDate(now.getDate() - now.getDay());
+          break;
+        case 'last_week':
+          startDate.setDate(now.getDate() - now.getDay() - 7);
+          endDate.setDate(now.getDate() - now.getDay() - 1);
+          break;
+        case 'this_month':
+          startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+          break;
+        case 'last_month':
+          startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+          endDate = new Date(now.getFullYear(), now.getMonth(), 0);
+          break;
+        default:
+          if (query.startDate && query.endDate) {
+            startDate = new Date(query.startDate);
+            endDate = new Date(query.endDate);
+          }
+      }
+      match.date = { $gte: startDate, $lte: endDate };
+    }
+    
+    return match;
+  }
+
+  private async calculateAccountBalances(query: any, accountTypes: string[]) {
+    const accounts = await this.accountModel.find({ type: { $in: accountTypes } });
+    const accountIds = accounts.map(a => a._id);
+    
+    const match = this.buildFilterQuery(query);
+    
+    // Additional line filters (e.g., state, office, product)
+    const lineMatch: any = { 'lines.accountId': { $in: accountIds } };
+    if (query.state) lineMatch['lines.state'] = query.state;
+    if (query.officeId) lineMatch['lines.locationId'] = new Types.ObjectId(query.officeId);
+    if (query.productId) lineMatch['lines.productId'] = new Types.ObjectId(query.productId);
+    
+    const journals = await this.journalModel.find(match).populate('lines.accountId');
+    
+    const balances = {};
+    accounts.forEach(a => { balances[a._id.toString()] = { name: a.name, code: a.code, type: a.type, balance: 0, normalBalance: a.normalBalance } });
+    
+    journals.forEach(journal => {
+      journal.lines.forEach((line: any) => {
+        if (balances[line.accountId._id.toString()]) {
+           // check if line matches filters
+           let matches = true;
+           if (query.state && line.state !== query.state) matches = false;
+           if (query.officeId && line.locationId?.toString() !== query.officeId) matches = false;
+           if (query.productId && line.productId?.toString() !== query.productId) matches = false;
+           
+           if (matches) {
+             const account = balances[line.accountId._id.toString()];
+             if (account.normalBalance === 'DEBIT') {
+                account.balance += (line.debit || 0) - (line.credit || 0);
+             } else {
+                account.balance += (line.credit || 0) - (line.debit || 0);
+             }
+           }
+        }
+      });
+    });
+    
+    return Object.values(balances);
+  }
+
+  async getIncomeStatement(query: any) {
+    const balances: any = await this.calculateAccountBalances(query, ['INCOME', 'COGS', 'EXPENSE']);
+    
+    let totalRevenue = 0;
+    let totalCogs = 0;
+    let totalExpenses = 0;
+    
+    balances.forEach(b => {
+      if (b.type === 'INCOME') totalRevenue += b.balance;
+      if (b.type === 'COGS') totalCogs += b.balance;
+      if (b.type === 'EXPENSE') totalExpenses += b.balance;
+    });
+    
+    const grossProfit = totalRevenue - totalCogs;
+    const netIncome = grossProfit - totalExpenses;
+    
+    return {
+      revenue: balances.filter(b => b.type === 'INCOME'),
+      totalRevenue,
+      cogs: balances.filter(b => b.type === 'COGS'),
+      totalCogs,
+      grossProfit,
+      expenses: balances.filter(b => b.type === 'EXPENSE'),
+      totalExpenses,
+      netIncome
+    };
+  }
+
+  async getBalanceSheet(query: any) {
+    const balances: any = await this.calculateAccountBalances(query, ['ASSET', 'LIABILITY', 'EQUITY']);
+    
+    let totalAssets = 0;
+    let totalLiabilities = 0;
+    let totalEquity = 0;
+    
+    balances.forEach(b => {
+      if (b.type === 'ASSET') totalAssets += b.balance;
+      if (b.type === 'LIABILITY') totalLiabilities += b.balance;
+      if (b.type === 'EQUITY') totalEquity += b.balance;
+    });
+    
+    // Retained Earnings (Net Income from all time up to the query date)
+    // We would ideally calculate net income up to the end date. For simplicity, we just return the categorized balances.
+    
+    return {
+      assets: balances.filter(b => b.type === 'ASSET'),
+      totalAssets,
+      liabilities: balances.filter(b => b.type === 'LIABILITY'),
+      totalLiabilities,
+      equity: balances.filter(b => b.type === 'EQUITY'),
+      totalEquity
+    };
+  }
+
+  async getCashFlowStatement(query: any) {
+    // Simplified Cash Flow: Changes in Cash and Bank Accounts
+    // In a real system, you'd categorize by Operating, Investing, Financing.
+    const balances: any = await this.calculateAccountBalances(query, ['ASSET']);
+    
+    const cashAccounts = balances.filter(b => b.name.toLowerCase().includes('cash') || b.name.toLowerCase().includes('bank'));
+    const totalCashChange = cashAccounts.reduce((sum, b) => sum + b.balance, 0);
+    
+    return {
+      cashAccounts,
+      netCashFlow: totalCashChange
+    };
+  }
 }
