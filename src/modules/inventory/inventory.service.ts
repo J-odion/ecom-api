@@ -21,23 +21,9 @@ export class InventoryService {
   ) {}
 
   async createProduct(dto: CreateProductDto): Promise<Product> {
-    this.logger.log(`Adding new product to catalog: ${dto.name || dto.productName}`);
-    const payload = {
-      name: dto.name || dto.productName || 'Unnamed Product',
-      description: dto.description,
-      baseCost: dto.baseCost ?? dto.cost ?? 0,
-      sellingPrice: dto.sellingPrice ?? dto.price ?? 0,
-    };
-    const product = new this.productModel(payload);
-    const saved = await product.save();
-    
-    // Seed initial stock if provided
-    const initialStock = dto.stock ?? dto.quantity ?? 0;
-    if (initialStock > 0) {
-      // Find a default warehouse or system location, or just warn if we can't seed it
-      this.logger.warn(`Initial stock of ${initialStock} requested, but locationId is missing. Stock must be seeded via /inventory/in with a locationId.`);
-    }
-    return saved;
+    this.logger.log(`Adding new product to catalog: ${dto.name}`);
+    const product = new this.productModel(dto);
+    return product.save();
   }
 
   /**
@@ -153,13 +139,10 @@ export class InventoryService {
   }
 
   async transferStock(dto: TransferStockDto): Promise<boolean> {
-    const fromId = dto.fromLocationId || dto.from;
-    const toId = dto.toLocationId || dto.to;
-    
-    this.logger.log(`Initiating stock transfer: ${dto.quantity} units from ${fromId} to ${toId}`);
+    this.logger.log(`Initiating stock transfer: ${dto.quantity} units from ${dto.fromLocationId} to ${dto.toLocationId}`);
     const prodId = new Types.ObjectId(dto.productId);
-    const fromLocId = new Types.ObjectId(fromId);
-    const toLocId = new Types.ObjectId(toId);
+    const fromLocId = new Types.ObjectId(dto.fromLocationId);
+    const toLocId = new Types.ObjectId(dto.toLocationId);
 
     const sourceStock = await this.stockLevelModel.findOne({ productId: prodId, locationId: fromLocId });
     if (!sourceStock || (sourceStock.stock - sourceStock.reservedStock) < dto.quantity) {

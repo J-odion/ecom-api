@@ -8,13 +8,11 @@ export class TransferStockDto {
 
   @ApiProperty()
   @IsString()
-  @IsOptional()
-  fromLocationId?: string;
+  fromLocationId: string;
 
   @ApiProperty()
   @IsString()
-  @IsOptional()
-  toLocationId?: string;
+  toLocationId: string;
 
   @ApiProperty()
   @IsNumber()
@@ -24,12 +22,4 @@ export class TransferStockDto {
   @IsString()
   @IsOptional()
   notes?: string;
-
-  @IsString()
-  @IsOptional()
-  from?: string;
-
-  @IsString()
-  @IsOptional()
-  to?: string;
 }

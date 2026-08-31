@@ -14,8 +14,4 @@ export class UpdateStockDto {
   @IsString()
   @IsOptional()
   notes?: string;
-
-  @IsString()
-  @IsOptional()
-  productId?: string;
 }

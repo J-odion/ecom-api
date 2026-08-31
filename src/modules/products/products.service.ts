@@ -11,14 +11,8 @@ export class ProductsService {
     @InjectModel(Product.name) private productModel: Model<ProductDocument>,
   ) {}
 
-  async create(dto: CreateProductDto): Promise<Product> {
-    const payload = {
-      name: dto.name || dto.productName || 'Unnamed Product',
-      description: dto.description,
-      baseCost: dto.baseCost ?? dto.cost ?? 0,
-      sellingPrice: dto.sellingPrice ?? dto.price ?? 0,
-    };
-    const createdProduct = new this.productModel(payload);
+  async create(createProductDto: CreateProductDto): Promise<Product> {
+    const createdProduct = new this.productModel(createProductDto);
     return createdProduct.save();
   }
 
