@@ -67,4 +67,12 @@ export class ProductsService {
     offersArray.pull(offerId);
     return product.save();
   }
+
+  async restock(productId: string, quantityRestocked: number): Promise<Product> {
+    const product = await this.productModel.findById(productId).exec();
+    if (!product) throw new NotFoundException('Product not found');
+    
+    product.stock += quantityRestocked;
+    return product.save();
+  }
 }

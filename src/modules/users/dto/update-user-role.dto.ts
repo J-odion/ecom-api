@@ -2,7 +2,7 @@ import { IsEnum } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { Role } from '../../../common/enums/role.enum';
 
-export class UpdateRoleDto {
+export class UpdateUserRoleDto {
   @ApiProperty({ enum: Role })
   @IsEnum(Role)
   role: Role;

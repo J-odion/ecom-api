@@ -1,14 +1,25 @@
-<!-- Embeddable Lead Capture Form Snippet for E-Commerce CRM -->
+<!-- Embeddable Order Form Snippet for E-Commerce CRM -->
 <!-- Copy and paste this code into your Wordpress, Shopify, or Custom Website -->
 
-<div id="ecom-crm-lead-form-container" style="max-width: 400px; margin: 0 auto; padding: 20px; border: 1px solid #eaeaea; border-radius: 8px; font-family: sans-serif;">
-  <h3 style="margin-top: 0;">Interested in this product?</h3>
-  <form id="ecom-crm-lead-form">
-    <!-- Replace this value with your actual Product ID -->
+<div id="ecom-crm-order-form-container" style="max-width: 400px; margin: 0 auto; padding: 20px; border: 1px solid #eaeaea; border-radius: 8px; font-family: sans-serif;">
+  <h3 style="margin-top: 0;" id="crm-headline">Interested in this product?</h3>
+  <p id="crm-subheadline" style="font-size: 14px; color: #666; margin-bottom: 16px;">Fill out the form below to order.</p>
+
+  <form id="ecom-crm-order-form">
+    <!-- REQUIRED: Replace this value with your actual Order Form ID -->
+    <input type="hidden" id="crm-order-form-id" name="orderFormId" value="REPLACE_WITH_ORDER_FORM_ID" />
+    
+    <!-- REQUIRED: Replace this value with your actual Product ID -->
     <input type="hidden" id="crm-product-id" name="productId" value="REPLACE_WITH_PRODUCT_ID" />
+    
+    <!-- REQUIRED: Replace this value with the product's unit price -->
+    <input type="hidden" id="crm-unit-price" name="unitPrice" value="35000" />
     
     <!-- Optional: Replace with Media Buyer ID to attribute this lead -->
     <input type="hidden" id="crm-media-buyer-id" name="sourceMediaBuyerId" value="" />
+    
+    <!-- Optional: Set the source (e.g., FACEBOOK, TIKTOK, GOOGLE, DIRECT) -->
+    <input type="hidden" id="crm-source" name="source" value="FACEBOOK" />
 
     <div style="margin-bottom: 12px;">
       <label for="crm-customer-name" style="display: block; margin-bottom: 4px; font-size: 14px;">Full Name *</label>
@@ -30,8 +41,18 @@
       <input type="number" id="crm-quantity" name="quantity" value="1" min="1" required style="width: 100%; padding: 8px; box-sizing: border-box;" />
     </div>
 
-    <button type="submit" style="width: 100%; padding: 10px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 16px;">
-      Submit Request
+    <!-- OPTIONAL: Order Bump Section -->
+    <!-- 
+    <div style="margin-bottom: 16px; padding: 10px; background-color: #f9f9ca; border: 1px dashed #d4d400; border-radius: 4px;">
+      <label style="display: flex; align-items: start; gap: 8px; font-size: 14px; cursor: pointer;">
+        <input type="checkbox" id="crm-bump-checkbox" value="REPLACE_WITH_BUMP_PRODUCT_ID" data-price="5000" style="margin-top: 2px;" />
+        <span><strong>Add Express Shipping!</strong> Yes, I want my order tomorrow for ₦5,000.</span>
+      </label>
+    </div>
+    -->
+
+    <button type="submit" style="width: 100%; padding: 10px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; font-weight: bold;">
+      Submit Order
     </button>
   </form>
 
@@ -39,25 +60,53 @@
 </div>
 
 <script>
-  // Ensure you replace this with the actual base URL of your deployed API
-  const CRM_API_URL = "https://your-api-domain.com/leads/webhook";
+  // Replace this with the actual base URL of your deployed API
+  const CRM_API_URL = "https://your-api-domain.com/order-forms/webhook";
 
-  document.getElementById('ecom-crm-lead-form').addEventListener('submit', async function(e) {
+  document.getElementById('ecom-crm-order-form').addEventListener('submit', async function(e) {
     e.preventDefault();
     
     const feedbackEl = document.getElementById('crm-form-feedback');
     const submitBtn = this.querySelector('button[type="submit"]');
     
     submitBtn.disabled = true;
-    submitBtn.innerText = "Submitting...";
+    submitBtn.innerText = "Processing...";
     
+    const productId = document.getElementById('crm-product-id').value;
+    const qty = parseInt(document.getElementById('crm-quantity').value, 10);
+    const unitPrice = parseFloat(document.getElementById('crm-unit-price').value) || 0;
+    
+    let totalAmount = qty * unitPrice;
+    
+    const items = [
+      {
+        productId: productId,
+        qty: qty,
+        unitPrice: unitPrice
+      }
+    ];
+
+    // Check for order bump (if the optional section is uncommented)
+    const bumpCheckbox = document.getElementById('crm-bump-checkbox');
+    if (bumpCheckbox && bumpCheckbox.checked) {
+      const bumpPrice = parseFloat(bumpCheckbox.getAttribute('data-price')) || 0;
+      totalAmount += bumpPrice;
+      items.push({
+        productId: bumpCheckbox.value,
+        qty: 1,
+        unitPrice: bumpPrice
+      });
+    }
+
     const payload = {
+      orderFormId: document.getElementById('crm-order-form-id').value,
       customerName: document.getElementById('crm-customer-name').value,
       customerPhone: document.getElementById('crm-customer-phone').value,
       customerAddress: document.getElementById('crm-customer-address').value,
-      productId: document.getElementById('crm-product-id').value,
-      quantity: parseInt(document.getElementById('crm-quantity').value, 10),
-      sourceMediaBuyerId: document.getElementById('crm-media-buyer-id').value || undefined
+      sourceMediaBuyerId: document.getElementById('crm-media-buyer-id').value || undefined,
+      source: document.getElementById('crm-source').value || "OTHER",
+      items: items,
+      totalAmount: totalAmount
     };
 
     try {
@@ -72,7 +121,7 @@
       if (response.ok) {
         feedbackEl.style.display = "block";
         feedbackEl.style.color = "green";
-        feedbackEl.innerText = "Thanks! We have received your request and will contact you shortly.";
+        feedbackEl.innerText = "Thanks! We have received your order and will contact you shortly.";
         this.reset();
       } else {
         const errorData = await response.json();
@@ -84,7 +133,7 @@
       feedbackEl.innerText = "Error: " + error.message;
     } finally {
       submitBtn.disabled = false;
-      submitBtn.innerText = "Submit Request";
+      submitBtn.innerText = "Submit Order";
     }
   });
 </script>

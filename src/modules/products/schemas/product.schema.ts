@@ -20,9 +20,6 @@ export class Product {
   @Prop({ default: true })
   isActive: boolean;
 
-  @Prop({ required: true, unique: true })
-  sku: string;
-
   @Prop({ required: true, default: 0 })
   stock: number; // Physical stock in warehouse
 

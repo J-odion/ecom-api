@@ -3,6 +3,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { CreateOfferDto } from './dto/create-offer.dto';
+import { RestockProductDto } from './dto/restock-product.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 
@@ -53,5 +54,11 @@ export class ProductsController {
   @ApiOperation({ summary: 'Remove an offer from a product' })
   removeOffer(@Param('id') id: string, @Param('offerId') offerId: string) {
     return this.productsService.removeOffer(id, offerId);
+  }
+
+  @Patch(':id/restock')
+  @ApiOperation({ summary: 'Restock a product in the inventory' })
+  restock(@Param('id') id: string, @Body() restockDto: RestockProductDto) {
+    return this.productsService.restock(id, restockDto.quantityRestocked);
   }
 }
