@@ -6,6 +6,7 @@ import { EarningsService } from './earnings.service';
 import { EarningsController } from './earnings.controller';
 import { Wallet, WalletSchema } from './schemas/wallet.schema';
 import { Transaction, TransactionSchema } from './schemas/transaction.schema';
+import { Product, ProductSchema } from '../products/schemas/product.schema';
 import { UsersModule } from '../users/user.module';
 import { CommissionRulesModule } from '../commission-rules/commission-rules.module';
 import { ProductsModule } from '../products/products.module';
@@ -15,6 +16,7 @@ import { ProductsModule } from '../products/products.module';
     MongooseModule.forFeature([
       { name: Wallet.name, schema: WalletSchema },
       { name: Transaction.name, schema: TransactionSchema },
+      { name: Product.name, schema: ProductSchema },
     ]),
     forwardRef(() => UsersModule),
     forwardRef(() => CommissionRulesModule),
