@@ -83,17 +83,17 @@ export class EarningsService {
   }
 
   async getStaffEarnings(query: any) {
-    // We assume staff are CUSTOMER_SERVICE, INVENTORY_MANAGER, LOGISTICS_MANAGER
+    // We assume staff are CUSTOMER_SERVICE, LOGISTICS_MANAGER
     const staffIds = (await this.usersService.findAll())
-      .filter((u: any) => [Role.CUSTOMER_SERVICE, Role.INVENTORY_MANAGER, Role.LOGISTICS_MANAGER].includes(u.legacyRole))
+      .filter((u: any) => [Role.CUSTOMER_SERVICE, Role.LOGISTICS_MANAGER].includes(u.legacyRole))
       .map((u: any) => new Types.ObjectId(u._id));
     return this.getEarnings(staffIds, query);
   }
 
   async getAgentEarnings(query: any) {
-    // Assuming agents are DISPATCH_RIDER
+    // Assuming agents are LOGISTICS
     const agentIds = (await this.usersService.findAll())
-      .filter((u: any) => u.legacyRole === Role.DISPATCH_RIDER)
+      .filter((u: any) => u.legacyRole === Role.LOGISTICS)
       .map((u: any) => new Types.ObjectId(u._id));
     return this.getEarnings(agentIds, query);
   }
